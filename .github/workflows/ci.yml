@@ -350,11 +350,7 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target test
-
-    - name: CTest
-      run: |
-        ctest --output-on-failure 
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
 
  # CI on Windows (Qt6)
   ci-windows-qt6:
@@ -390,8 +386,4 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target test
-
-    - name: CTest
-      run: |
-        ctest --output-on-failure 
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install

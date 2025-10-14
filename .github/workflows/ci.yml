@@ -11,7 +11,7 @@ on:
     branches: [master]
 
 env:
-  parallel_processes: 6 # A good default counts is: available Threads + 2
+  parallel_processes: 4 # A good default counts is: available Threads
 
 jobs:
   # CI on Linux (Qt5)
@@ -48,7 +48,7 @@ jobs:
 
     - name: Compile
       working-directory: build
-      run: make -j${{env.parallel_processes}}
+      run: make -j ${{env.parallel_processes}}
 
     - name: Run unit tests
       uses: coactions/setup-xvfb@v1
@@ -92,7 +92,7 @@ jobs:
 
     - name: Compile
       working-directory: build
-      run: make -j${{env.parallel_processes}}
+      run: make -j ${{env.parallel_processes}}
 
     - name: Run unit tests
       uses: coactions/setup-xvfb@v1
@@ -138,7 +138,7 @@ jobs:
 
     - name: Compile
       working-directory: build
-      run: make -j${{env.parallel_processes}}
+      run: make -j ${{env.parallel_processes}}
 
     - name: Run unit tests
       uses: coactions/setup-xvfb@v1
@@ -181,7 +181,7 @@ jobs:
 
     - name: Compile
       working-directory: build
-      run: make -j${{env.parallel_processes}}
+      run: make -j ${{env.parallel_processes}}
 
     - name: Run unit tests
       uses: coactions/setup-xvfb@v1
@@ -228,7 +228,7 @@ jobs:
 
     - name: Compile
       working-directory: build
-      run: make -j${{env.parallel_processes}}
+      run: make -j ${{env.parallel_processes}}
 
     - name: Run unit tests
       uses: coactions/setup-xvfb@v1
@@ -270,7 +270,7 @@ jobs:
                 -DENABLE_TESTING=On \
                 -DENABLE_QT6=Off \
                 "${{ github.workspace }}"
-          make -j${{env.parallel_processes}}
+          make -j ${{env.parallel_processes}}
           Xvfb :0 -ac -screen 0 1024x768x24+32 >/dev/null 2>&1 &
           sleep 3
           ctest --output-on-failure
@@ -309,9 +309,46 @@ jobs:
                 -DSTELLARIUM_RELEASE_BUILD=Off \
                 -DENABLE_TESTING=On \
                 "${{ github.workspace }}"
-          make -j${{env.parallel_processes}}
+          make -j ${{env.parallel_processes}}
           Xvfb :0 -ac -screen 0 1024x768x24+32 >/dev/null 2>&1 &
           sleep 3
           ctest --output-on-failure
           sleep 1
           pkill Xvfb
+
+  # CI on Windows (Qt6)
+  ci-windows-qt6:
+    name: "Windows (x86_64; qt6)"
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.actor, 'transifex')"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        aqtversion: '==3.3.*'
+        version: '6.8.3'
+        host: 'windows'
+        target: 'desktop'
+        cache: true
+        dir: '${{ github.workspace }}/'
+        arch: 'win64_msvc2022_64'
+        modules: 'qt3d qtactiveqt qtcharts qtconnectivity qtdatavis3d qtgrpc qthttpserver qtimageformats qtlanguageserver qtlocation qtlottie qtmultimedia qtnetworkauth qtpdf qtpositioning qtquick3dphysics qtquickeffectmaker qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtspeech qtvirtualkeyboard qtwebchannel qtwebengine qtwebsockets qtwebview debug_info qt5compat qtquick3d qtquicktimeline qtshadertools'
+
+    # Packages should be automatically downloaded using vcpkg through the toolchain
+    - name: Configure CMake
+      env:
+        CMAKE_PREFIX_PATH: ${{env.QT_ROOT_DIR}}
+      # Choose CMakeLists.text from a specific source directory with -S.
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: |
+        cmake -B build -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=stellarium-bin -DSCM_SHOULD_ENABLE_CONVERTER=OFF
+
+    - name: Build
+      # Build your program with the given configuration
+      run: |
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install

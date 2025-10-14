@@ -354,7 +354,7 @@ jobs:
 
     - name: Unit testing
       run: |
-        ctest --output-on-failure ${{ github.workspace }}
+        ctest --output-on-failure ${{ github.workspace }}/build
 
  # CI on Windows (Qt6)
   ci-windows-qt6:
@@ -394,4 +394,4 @@ jobs:
 
     - name: Unit testing
       run: |
-        ctest --output-on-failure ${{ github.workspace }}
+        ctest --output-on-failure ${{ github.workspace }}/build

@@ -316,7 +316,47 @@ jobs:
           sleep 1
           pkill Xvfb
 
-  # CI on Windows (Qt6)
+  # CI on Windows (Qt5)
+  ci-windows-qt5:
+    name: "Windows (x86_64; qt5)"
+    runs-on: windows-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.actor, 'transifex')"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        aqtversion: '==3.3.*'
+        version: '5.12.12'
+        host: 'windows'
+        target: 'desktop'
+        cache: true
+        arch: 'win64_msvc2017_64'
+        modules: 'qtcharts qtscript qtvirtualkeyboard qtwebengine debug_info qtserialbus qtserialport qtlocation qtmultimedia qtdeclarative qtimageformats qtsensors qtsvg'
+
+    # Packages should be automatically downloaded using vcpkg through the toolchain
+    - name: Configure CMake
+      env:
+        CMAKE_PREFIX_PATH: ${{env.QT_ROOT_DIR}}
+      # Choose CMakeLists.text from a specific source directory with -S.
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: |
+        cmake -B build -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTELLARIUM_RELEASE_BUILD=Off -DENABLE_TESTING=On -DCMAKE_INSTALL_PREFIX=stellarium-bin
+
+    - name: Build
+      # Build your program with the given configuration
+      run: |
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+
+    - name: CTest
+      run: |
+        ctest --output-on-failure 
+
+ # CI on Windows (Qt6)
   ci-windows-qt6:
     name: "Windows (x86_64; qt6)"
     runs-on: windows-latest
@@ -334,9 +374,8 @@ jobs:
         host: 'windows'
         target: 'desktop'
         cache: true
-        dir: '${{ github.workspace }}/'
         arch: 'win64_msvc2022_64'
-        modules: 'qt3d qtactiveqt qtcharts qtconnectivity qtdatavis3d qtgrpc qthttpserver qtimageformats qtlanguageserver qtlocation qtlottie qtmultimedia qtnetworkauth qtpdf qtpositioning qtquick3dphysics qtquickeffectmaker qtremoteobjects qtscxml qtsensors qtserialbus qtserialport qtspeech qtvirtualkeyboard qtwebchannel qtwebengine qtwebsockets qtwebview debug_info qt5compat qtquick3d qtquicktimeline qtshadertools'
+        modules: 'qtcharts qtimageformats qtlocation qtmultimedia qtpositioning qtscxml qtsensors qtserialbus qtserialport qtvirtualkeyboard qtwebchannel qtwebengine qtwebsockets qtwebview debug_info qt5compat qtquicktimeline qtshadertools'
 
     # Packages should be automatically downloaded using vcpkg through the toolchain
     - name: Configure CMake
@@ -346,9 +385,13 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
-        cmake -B build -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=stellarium-bin -DSCM_SHOULD_ENABLE_CONVERTER=OFF
+        cmake -B build -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTELLARIUM_RELEASE_BUILD=Off -DENABLE_TESTING=On -DCMAKE_INSTALL_PREFIX=stellarium-bin -DSCM_SHOULD_ENABLE_CONVERTER=OFF
 
     - name: Build
       # Build your program with the given configuration
       run: |
         cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+
+    - name: CTest
+      run: |
+        ctest --output-on-failure 

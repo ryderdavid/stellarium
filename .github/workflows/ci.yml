@@ -350,7 +350,7 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target all
 
     - name: CTest
       run: |
@@ -390,7 +390,7 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target all
 
     - name: CTest
       run: |

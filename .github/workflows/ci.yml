@@ -417,7 +417,7 @@ jobs:
         target: 'desktop'
         cache: true
         arch: 'win64_msvc2022_arm64'
-        modules: 'qtcharts qtimageformats qtlocation qtmultimedia qtpositioning qtscxml qtsensors qtserialbus qtserialport qtvirtualkeyboard qtwebchannel qtwebengine qtwebsockets qtwebview debug_info qt5compat qtquicktimeline qtshadertools'
+        modules: 'qtcharts qtimageformats qtlocation qtmultimedia qtpositioning qtscxml qtsensors qtserialbus qtserialport qtvirtualkeyboard debug_info qt5compat'
 
     # Packages should be automatically downloaded using vcpkg through the toolchain
     - name: Configure CMake

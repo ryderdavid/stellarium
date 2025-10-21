@@ -345,12 +345,14 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
-        cmake -B build -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTELLARIUM_RELEASE_BUILD=Off -DENABLE_TESTING=On -DCMAKE_INSTALL_PREFIX=stellarium-bin
+        mkdir build
+        cd build
+        cmake -S "${{ github.workspace }}" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTELLARIUM_RELEASE_BUILD=Off -DENABLE_TESTING=On -DCMAKE_INSTALL_PREFIX=stellarium-bin
 
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+        cmake --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
 
     - name: Unit tests
       run: |

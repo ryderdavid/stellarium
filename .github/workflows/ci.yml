@@ -350,11 +350,12 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
+        cmake -B build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
         dir
-        cmake -B build --config RelWithDebInfo -j ${{env.parallel_processes}} --target all
 
-    - name: Unit tests
+    - name: Run unit tests
       run: |
+        cd "${{ github.workspace }}"\build
         dir
         ctest --output-on-failure -C RelWithDebInfo
 

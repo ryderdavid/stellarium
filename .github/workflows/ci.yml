@@ -352,6 +352,10 @@ jobs:
       run: |
         cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
 
+    - name: Unit tests
+      run: |
+        ctest --output-on-failure -C RelWithDebInfo
+
  # CI on Windows (Qt6)
   ci-windows-qt6:
     name: "Windows (x86_64; qt6)"

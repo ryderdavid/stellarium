@@ -355,7 +355,7 @@ jobs:
 
     - name: Run unit tests
       run: |
-        cd "${{ github.workspace }}"\build
+        cd ${{ github.workspace }}\build
         dir
         ctest --output-on-failure -C RelWithDebInfo
 

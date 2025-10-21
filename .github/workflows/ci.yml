@@ -350,7 +350,7 @@ jobs:
     - name: Build
       # Build your program with the given configuration
       run: |
-        cmake -B build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
+        cmake --build build --config RelWithDebInfo -j ${{env.parallel_processes}} --target install
         dir
 
     - name: Run unit tests

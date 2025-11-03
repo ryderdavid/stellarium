@@ -2176,7 +2176,9 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			// For small angles near the equator, we can approximate:
 			// RA offset = rotatedX / cos(Dec)
 			// Dec offset = rotatedY
-			const double raOffset = rotatedX / std::cos(centerDec);
+			// Avoid division by zero near poles (cos approaches 0)
+			const double cosDec = std::cos(centerDec);
+			const double raOffset = (std::abs(cosDec) > 0.01) ? rotatedX / cosDec : 0.0;
 			const double decOffset = rotatedY;
 			
 			// Calculate panel center RA/Dec

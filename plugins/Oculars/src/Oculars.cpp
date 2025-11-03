@@ -1576,6 +1576,14 @@ void Oculars::initializeActivationActions()
 	addAction("actionShow_Sensor_Crop_Overlay", ocularsGroup, N_("Toggle sensor crop overlay"), "toggleCropOverlay()");
 	addAction("actionShow_Sensor_Pixel_Grid", ocularsGroup, N_("Toggle sensor pixel grid"), "togglePixelGrid()");
 	addAction("actionShow_Sensor_Focuser_Overlay", ocularsGroup, N_("Toggle focuser overlay"), "toggleFocuserOverlay()");
+	
+	// Mosaic planning actions
+	addAction("actionShow_Mosaic_Mode", ocularsGroup, N_("Toggle mosaic mode"), "flagMosaicMode");
+	addAction("actionMosaic_PanelsX_Increment", ocularsGroup, N_("Increase X panels"), this, [this]{setMosaicPanelsX(getMosaicPanelsX() + 1);}, "");
+	addAction("actionMosaic_PanelsX_Decrement", ocularsGroup, N_("Decrease X panels"), this, [this]{setMosaicPanelsX(getMosaicPanelsX() - 1);}, "");
+	addAction("actionMosaic_PanelsY_Increment", ocularsGroup, N_("Increase Y panels"), this, [this]{setMosaicPanelsY(getMosaicPanelsY() + 1);}, "");
+	addAction("actionMosaic_PanelsY_Decrement", ocularsGroup, N_("Decrease Y panels"), this, [this]{setMosaicPanelsY(getMosaicPanelsY() - 1);}, "");
+	addAction("actionMosaic_Rotation_Reset", ocularsGroup, N_("Reset mosaic rotation"), this, [this]{setMosaicRotationAngle(0.0);}, "", "");
 
 	// NOTE: GUI elements in OcularsGuiPanel
 	addAction("actionToggle_Oculars_Rotate_Frame_Reset", ocularsGroup, N_("Reset the sensor frame rotation"), this, "ccdRotationReset()", "", "");
@@ -2210,12 +2218,10 @@ void Oculars::paintMosaicBounds()
 	const auto altAzProj = core->getProjection(StelCore::FrameAltAz, StelCore::RefractionMode::RefractionOff);
 	const auto projector = telescope->isEquatorial() ? equatProj : altAzProj;
 	
-	// Calculate or use cached panels
-	if (!mosaicPanelsCacheValid)
-	{
-		cachedMosaicPanels = calculateMosaicPanels();
-		mosaicPanelsCacheValid = true;
-	}
+	// Always recalculate panels - cache is invalidated when equipment or parameters change
+	// Note: We recalculate each frame to ensure mosaic follows view center
+	// (optimization: could cache based on view center hash for better performance)
+	cachedMosaicPanels = calculateMosaicPanels();
 	
 	// Render each panel
 	for (const auto& panel : cachedMosaicPanels)

@@ -2113,13 +2113,17 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 {
 	QVector<MosaicPanel> panels;
 	
-	if (selectedCCDIndex < 0 || selectedTelescopeIndex < 0)
+	// Safety checks - return empty if equipment not properly selected
+	if (selectedCCDIndex < 0 || selectedCCDIndex >= ccds.count())
+		return panels;
+	if (selectedTelescopeIndex < 0 || selectedTelescopeIndex >= telescopes.count())
 		return panels;
 	
 	CCD *ccd = ccds[selectedCCDIndex];
 	if (!ccd) return panels;
 	
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
+	if (!telescope) return panels;
 	Lens *lens = selectedLensIndex >= 0 ? lenses[selectedLensIndex] : Q_NULLPTR;
 	
 	// Get FOV for the selected equipment
@@ -2206,13 +2210,18 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 
 void Oculars::paintMosaicBounds()
 {
-	if (selectedCCDIndex < 0 || selectedTelescopeIndex < 0)
+	// Safety checks - return early if equipment not properly selected
+	if (selectedCCDIndex < 0 || selectedCCDIndex >= ccds.count())
+		return;
+	if (selectedTelescopeIndex < 0 || selectedTelescopeIndex >= telescopes.count())
 		return;
 	
 	CCD *ccd = ccds[selectedCCDIndex];
 	if (!ccd) return;
 	
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
+	if (!telescope) return; // Safety check
+	
 	Lens *lens = selectedLensIndex >= 0 ? lenses[selectedLensIndex] : Q_NULLPTR;
 	
 	StelCore *core = StelApp::getInstance().getCore();

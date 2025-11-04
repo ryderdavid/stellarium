@@ -95,12 +95,14 @@ Extend the Oculars plugin to support mosaic planning capabilities, allowing user
 ## Technical Requirements
 
 ### TR1: Architecture
-- **Description**: Extend existing Oculars plugin, do not create separate plugin
+- **Description**: Extend existing Oculars plugin, do not create separate plugin. Plugin will be built as a dynamic plugin to enable testing with production Stellarium builds.
 - **Priority**: High
 - **Implementation Notes**:
   - Add mosaic functionality to `plugins/Oculars/src/Oculars.cpp`
   - Reuse existing FOV calculation (`CCD::getActualFOVx/y()`)
   - Reuse existing rendering infrastructure (`drawSensorFrameAndOverlay()`)
+  - Build system supports both static (default) and dynamic plugin builds via `BUILD_DYNAMIC_PLUGIN` CMake option
+  - Dynamic plugin can be installed to production Stellarium instance for testing
 
 ### TR2: Properties and Signals
 - **Description**: Expose mosaic configuration via Qt properties
@@ -303,6 +305,29 @@ struct MosaicPanel {
 ### External
 - Qt 5.x (for UI and properties)
 - Standard C++ library
+
+## Build and Deployment
+
+### Build Configuration
+- **Static Plugin (Default)**: Built into main Stellarium binary
+  - Standard build: `cmake .. && make`
+  - No special configuration needed
+  
+- **Dynamic Plugin (For Testing)**: Built as separate `.so`/`.dylib`/`.dll`
+  - Build with: `cmake -DBUILD_DYNAMIC_PLUGIN=ON .. && make`
+  - Output: `modules/Oculars/Oculars.dylib` (macOS) or equivalent
+  - Can be installed to production Stellarium instance for testing
+  - Installation path: `~/.stellarium/modules/Oculars/` (Linux/macOS) or equivalent user data directory
+
+### Testing with Production Stellarium
+1. Build Oculars plugin as dynamic plugin: `cmake -DBUILD_DYNAMIC_PLUGIN=ON .. && make`
+2. Locate production Stellarium user data directory:
+   - macOS: `~/Library/Application Support/Stellarium/`
+   - Linux: `~/.stellarium/`
+   - Windows: `%APPDATA%\Stellarium\`
+3. Create `modules/Oculars/` directory if it doesn't exist
+4. Copy built plugin library and resource files to the directory
+5. Restart Stellarium to load the modified plugin
 
 ## Risk Assessment
 

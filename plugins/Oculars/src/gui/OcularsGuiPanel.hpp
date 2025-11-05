@@ -63,6 +63,8 @@ private slots:
 	void updateLensControls();
 	//! Updates the information shown when an ocular overlay is displayed
 	void updateOcularControls();
+	//! Updates the mosaic controls
+	void updateMosaicControls();
 	//! Updates the information that depends on the current telescope.
 	//! Called in both updateOcularControls() and updateCcdControls().
 	void updateTelescopeControls();
@@ -168,7 +170,6 @@ private:
 	void setCcdControlsVisible(bool show);
 	void setTelescopeControlsVisible(bool show);
 	void setLensControlsVisible(bool show);
-	void updateMosaicControls();
 	//! Updates the positions of the buttons inside the button bar.
 	void updateMainButtonsPositions();
 

@@ -384,18 +384,18 @@ void Oculars::draw(StelCore* core)
 				   << oculars.count() << ". Module disabled!";
 		}
 	}
-	else if (flagMosaicMode)
-	{
-		paintMosaicBounds();
-		if (!flagGuiPanelEnabled)
-		{
-			// Paint the information in the upper-right hand corner
-			paintText(core);
-		}
-	}
 	else if (flagShowCCD)
 	{
-		paintCCDBounds();
+		// When CCD mode is ON, check if mosaic mode is also ON
+		if (flagMosaicMode)
+		{
+			paintMosaicBounds();
+		}
+		else
+		{
+			paintCCDBounds();
+		}
+
 		if (!flagGuiPanelEnabled)
 		{
 			// Paint the information in the upper-right hand corner
@@ -1426,12 +1426,8 @@ void Oculars::toggleCCD(bool show)
 	StelSkyDrawer *skyDrawer = core->getSkyDrawer();
 	if (show)
 	{
-		// Disable mosaic mode when enabling CCD mode
-		if (flagMosaicMode)
-		{
-			setFlagMosaicMode(false);
-		}
-		
+		// Note: Mosaic mode can coexist with CCD mode - don't disable it
+
 		initialFOV = movementManager->getCurrentFov();
 		//Mutually exclusive with the ocular mode
 		hideUsageMessageIfDisplayed();
@@ -2171,11 +2167,11 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			// Center the grid: shift by (panelsX-1)/2 and (panelsY-1)/2
 			const double localX = (i - (mosaicPanelsX - 1) / 2.0) * stepX;
 			const double localY = (j - (mosaicPanelsY - 1) / 2.0) * stepY;
-			
+
 			// Apply rotation to grid
 			const double rotatedX = localX * cosRot - localY * sinRot;
 			const double rotatedY = localX * sinRot + localY * cosRot;
-			
+
 			// Convert angular offsets to RA/Dec offsets at the mosaic center
 			// For small angles near the equator, we can approximate:
 			// RA offset = rotatedX / cos(Dec)
@@ -2184,11 +2180,19 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			const double cosDec = std::cos(centerDec);
 			const double raOffset = (std::abs(cosDec) > 0.01) ? rotatedX / cosDec : 0.0;
 			const double decOffset = rotatedY;
-			
+
 			// Calculate panel center RA/Dec
 			double panelRA = centerRA + raOffset * (M_PI / 180.0);
 			double panelDec = centerDec + decOffset * (M_PI / 180.0);
-			
+
+			// Debug first few panels
+			if (panels.size() < 3)
+			{
+				qDebug() << "Panel" << i << j << ": localX=" << localX << "localY=" << localY
+				         << "stepX=" << stepX << "stepY=" << stepY
+				         << "raOffset=" << raOffset << "decOffset=" << decOffset;
+			}
+
 			// Normalize RA to [0, 2π)
 			panelRA = StelUtils::fmodpos(panelRA, 2.0 * M_PI);
 			
@@ -2197,9 +2201,10 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			
 			// Convert to appropriate coordinate frame
 			panel.center = core->j2000ToEquinoxEqu(panel.center, StelCore::RefractionOff);
-			
-			// Panel rotation includes grid rotation + CCD chip rotation
-			panel.rotation = gridRotationRad + ccd->chipRotAngle() * (M_PI / 180.0);
+
+			// Panel rotation is only the CCD chip rotation
+			// Grid rotation is already applied to the panel positions above
+			panel.rotation = ccd->chipRotAngle() * (M_PI / 180.0);
 			
 			panels.append(panel);
 		}
@@ -2210,123 +2215,117 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 
 void Oculars::paintMosaicBounds()
 {
+	static int callCount = 0;
+	if (callCount++ < 5)  // Only log first 5 calls to avoid spam
+		qDebug() << "Oculars: paintMosaicBounds() called, selectedCCDIndex=" << selectedCCDIndex << "selectedTelescopeIndex=" << selectedTelescopeIndex;
+
 	// Safety checks - return early if equipment not properly selected
 	if (selectedCCDIndex < 0 || selectedCCDIndex >= ccds.count())
+	{
+		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - invalid CCD index";
 		return;
+	}
 	if (selectedTelescopeIndex < 0 || selectedTelescopeIndex >= telescopes.count())
+	{
+		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - invalid telescope index";
 		return;
-	
+	}
+
 	CCD *ccd = ccds[selectedCCDIndex];
-	if (!ccd) return;
-	
+	if (!ccd)
+	{
+		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - CCD is NULL";
+		return;
+	}
+
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
-	if (!telescope) return; // Safety check
-	
+	if (!telescope)
+	{
+		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - telescope is NULL";
+		return;
+	}
+
 	Lens *lens = selectedLensIndex >= 0 ? lenses[selectedLensIndex] : Q_NULLPTR;
-	
+
 	StelCore *core = StelApp::getInstance().getCore();
 	const auto equatProj = core->getProjection(StelCore::FrameEquinoxEqu, StelCore::RefractionMode::RefractionOff);
 	const auto altAzProj = core->getProjection(StelCore::FrameAltAz, StelCore::RefractionMode::RefractionOff);
 	const auto projector = telescope->isEquatorial() ? equatProj : altAzProj;
-	
+
 	// Always recalculate panels - cache is invalidated when equipment or parameters change
 	// Note: We recalculate each frame to ensure mosaic follows view center
 	// (optimization: could cache based on view center hash for better performance)
 	cachedMosaicPanels = calculateMosaicPanels();
-	
-	// Render each panel
-	for (const auto& panel : cachedMosaicPanels)
+
+	if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - calculated" << cachedMosaicPanels.size() << "panels";
+
+	// Calculate shared rotation matrix based on mosaic center (view center)
+	// All panels in the mosaic share the same orientation
+	Vec2i centerScreen(projector->getViewportPosX() + projector->getViewportWidth() / 2,
+			   projector->getViewportPosY() + projector->getViewportHeight() / 2);
+	Vec3d mosaicCenter;
+	projector->unProject(centerScreen[0], centerScreen[1], mosaicCenter);
+	double azimuth, elevation;
+	StelUtils::rectToSphe(&azimuth, &elevation, mosaicCenter);
+	const auto sharedRotationMatrix = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
+					  Mat4f::rotation(Vec3f(0,1,0), -elevation) *
+					  Mat4f::rotation(Vec3f(1,0,0), ccd->chipRotAngle() * (M_PI/180));
+
+	// Render each panel using the shared rotation matrix
+	for (int i = 0; i < cachedMosaicPanels.size(); ++i)
 	{
-		drawMosaicPanelFrame(panel, projector, *ccd, lens);
+		const auto& panel = cachedMosaicPanels[i];
+		if (callCount < 5)
+		{
+			// Project panel center to screen to see where it appears
+			Vec3f panelScreenPos;
+			projector->project(panel.center, panelScreenPos);
+			qDebug() << "Oculars: Drawing panel" << i << "at grid position (" << panel.panelIndexX << "," << panel.panelIndexY << ")"
+			         << "sky coords:" << panel.center[0] << panel.center[1] << panel.center[2]
+			         << "screen pos:" << panelScreenPos[0] << panelScreenPos[1];
+		}
+		drawMosaicPanelFrame(panel, projector, *ccd, lens, sharedRotationMatrix);
 	}
 }
 
-void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens)
+void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens, const Mat4f& sharedRotationMatrix)
 {
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
 	if (!telescope) return;
-	
-	StelCore *core = StelApp::getInstance().getCore();
-	
-	// Convert panel center to screen coordinates
+
+	// Calculate rotation matrix for THIS panel's center position
+	// This ensures the derotate matrix used by drawSensorFrameAndOverlay embeds the correct position
+	double azimuth, elevation;
+	StelUtils::rectToSphe(&azimuth, &elevation, panel.center);
+	const auto panelRotationMatrix = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
+	                 Mat4f::rotation(Vec3f(0,1,0), -elevation) *
+	                 Mat4f::rotation(Vec3f(1,0,0), ccd.chipRotAngle() * (M_PI/180));
+
+	// Project panel center to screen coordinates
 	Vec3f panelCenterWin;
 	projector->project(panel.center, panelCenterWin);
-	
-	// Get azimuth and elevation of panel center for rotation matrix
-	Vec3d panelCenterAltAz = core->equinoxEquToAltAz(panel.center, StelCore::RefractionAuto);
-	double azimuth, elevation;
-	StelUtils::rectToSphe(&azimuth, &elevation, panelCenterAltAz);
-	
-	// Create rotation matrix (includes grid rotation + CCD rotation)
-	const auto derotate = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
-			      Mat4f::rotation(Vec3f(0,1,0), -elevation) *
-			      Mat4f::rotation(Vec3f(1,0,0), panel.rotation);
-	
-	// Get FOV
-	const double fovX = ccd.getActualFOVx(telescope, lens) * (M_PI/180);
-	const double fovY = ccd.getActualFOVy(telescope, lens) * (M_PI/180);
-	
-	const float tanFovX = std::tan(fovX/2);
-	const float tanFovY = std::tan(fovY/2);
-	
-	// Draw frame similar to drawSensorFrameAndOverlay but centered on panel
-	StelPainter painter(projector);
-	painter.setLineSmooth(true);
-	painter.setColor(lineColor);
-	
-	const int numPointsPerLine = 30;
-	std::vector<Vec2f> lineLoopPoints;
-	lineLoopPoints.reserve(numPointsPerLine * 4);
-	
-	// Left line
-	for(int n = 0; n < numPointsPerLine; ++n)
-	{
-		const auto x = 1;
-		const auto y = tanFovX;
-		const auto z = tanFovY * (2.f / (numPointsPerLine - 1) * n - 1);
-		Vec3f skyPoint = derotate * Vec3f(x,y,z);
-		Vec3f win;
-		projector->project(skyPoint, win);
-		lineLoopPoints.emplace_back(Vec2f(win[0], win[1]));
-	}
-	// Top line
-	for(int n = 1; n < numPointsPerLine; ++n)
-	{
-		const auto x = 1;
-		const auto y = -tanFovX * (2.f / (numPointsPerLine - 1) * n - 1);
-		const auto z = tanFovY;
-		Vec3f skyPoint = derotate * Vec3f(x,y,z);
-		Vec3f win;
-		projector->project(skyPoint, win);
-		lineLoopPoints.emplace_back(Vec2f(win[0], win[1]));
-	}
-	// Right line
-	for(int n = 1; n < numPointsPerLine; ++n)
-	{
-		const auto x = 1;
-		const auto y = -tanFovX;
-		const auto z = tanFovY * (1 - 2.f / (numPointsPerLine - 1) * n);
-		Vec3f skyPoint = derotate * Vec3f(x,y,z);
-		Vec3f win;
-		projector->project(skyPoint, win);
-		lineLoopPoints.emplace_back(Vec2f(win[0], win[1]));
-	}
-	// Bottom line
-	for(int n = 1; n < numPointsPerLine-1; ++n)
-	{
-		const auto x = 1;
-		const auto y = -tanFovX * (1 - 2.f / (numPointsPerLine - 1) * n);
-		const auto z = -tanFovY;
-		Vec3f skyPoint = derotate * Vec3f(x,y,z);
-		Vec3f win;
-		projector->project(skyPoint, win);
-		lineLoopPoints.emplace_back(Vec2f(win[0], win[1]));
-	}
-	
-	painter.enableClientStates(true);
-	painter.setVertexPointer(2, GL_FLOAT, lineLoopPoints.data());
-	painter.drawFromArray(StelPainter::LineLoop, lineLoopPoints.size(), 0, false);
-	painter.enableClientStates(false);
+	const Vec2f panelCenterWin2d(panelCenterWin[0], panelCenterWin[1]);
+
+	// Compute frame orientation vectors
+	Vec3f frameUpWin, frameCenterWinCheck, frameRightWin;
+
+	// Project "up" direction (small offset in z) from panel center
+	Vec3f upOffset = panelRotationMatrix * Vec3f(0,0,0.01);
+	projector->project(panel.center + Vec3d(upOffset[0], upOffset[1], upOffset[2]), frameUpWin);
+	projector->project(panel.center, frameCenterWinCheck);
+	// Project "right" direction (small offset in -y) from panel center
+	Vec3f rightOffset = panelRotationMatrix * Vec3f(0,-0.01,0);
+	projector->project(panel.center + Vec3d(rightOffset[0], rightOffset[1], rightOffset[2]), frameRightWin);
+
+	const Vec2f frameUpWinDir = normalize(Vec2f(frameUpWin[0] - frameCenterWinCheck[0],
+	                                            frameUpWin[1] - frameCenterWinCheck[1]));
+	const Vec2f frameRightWinDir = normalize(Vec2f(frameRightWin[0] - frameCenterWinCheck[0],
+	                                               frameRightWin[1] - frameCenterWinCheck[1]));
+
+	// Use the existing helper function to draw the sensor frame
+	const QSize overlaySize(ccd.resolutionX(), ccd.resolutionY());
+	drawSensorFrameAndOverlay(projector, panelRotationMatrix, frameUpWinDir, frameRightWinDir,
+	                         panelCenterWin2d, ccd, lens, overlaySize);
 }
 
 void Oculars::paintCrosshairs()
@@ -3374,17 +3373,21 @@ void Oculars::setFlagMosaicMode(const bool b)
 {
 	if (b != flagMosaicMode)
 	{
+		qDebug() << "Oculars: setFlagMosaicMode" << b << "flagShowCCD=" << flagShowCCD;
 		flagMosaicMode = b;
 		settings->setValue("mosaic_mode_enabled", b);
 		settings->sync();
 		mosaicPanelsCacheValid = false; // Invalidate cache when mode changes
-		
-		if (b && flagShowCCD)
+
+		// Note: Mosaic mode is a variant of CCD viewing, not mutually exclusive
+		// Keep flagShowCCD true so the panel stays visible
+		// Ensure CCD mode is enabled when mosaic mode is turned on
+		if (b && !flagShowCCD)
 		{
-			// Disable single CCD mode when enabling mosaic mode
-			toggleCCD(false);
+			qDebug() << "Oculars: Enabling CCD mode for mosaic";
+			toggleCCD(true);
 		}
-		
+
 		emit flagMosaicModeChanged(b);
 	}
 }

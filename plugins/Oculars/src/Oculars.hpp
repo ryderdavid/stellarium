@@ -449,8 +449,8 @@ private:
 
 	//! Calculate mosaic panel positions based on current configuration
 	QVector<MosaicPanel> calculateMosaicPanels();
-	//! Render a single mosaic panel frame
-	void drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens);
+	//! Render a single mosaic panel frame using shared rotation matrix
+	void drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens, const Mat4f& sharedRotationMatrix);
 
 	//! Paints the text about the current object selections to the upper right hand of the screen.
 	//! Should only be called from a 'ready' state; currently from the draw() method.

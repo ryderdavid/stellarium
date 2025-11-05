@@ -153,11 +153,22 @@ private:
 	StelButton* rotatePrismPlus15Button = nullptr;
 	StelButton* rotatePrismPlus90Button = nullptr;
 
+	//Mosaic controls
+	QGraphicsTextItem* fieldMosaicMode;
+	QGraphicsTextItem* fieldMosaicPanelsX;
+	QGraphicsTextItem* fieldMosaicPanelsY;
+	StelButton* prevMosaicPanelsXButton;
+	StelButton* nextMosaicPanelsXButton;
+	StelButton* prevMosaicPanelsYButton;
+	StelButton* nextMosaicPanelsYButton;
+	StelButton* toggleMosaicModeButton;
+
 	//! Sets the visibility of the ocular name label and the associated buttons.
 	void setOcularControlsVisible(bool show);
 	void setCcdControlsVisible(bool show);
 	void setTelescopeControlsVisible(bool show);
 	void setLensControlsVisible(bool show);
+	void updateMosaicControls();
 	//! Updates the positions of the buttons inside the button bar.
 	void updateMainButtonsPositions();
 

@@ -217,6 +217,7 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	connect(ocularsPlugin, SIGNAL(flagMosaicModeChanged(bool)), this, SLOT(updateMosaicControls()));
 	connect(ocularsPlugin, SIGNAL(mosaicPanelsXChanged(int)), this, SLOT(updateMosaicControls()));
 	connect(ocularsPlugin, SIGNAL(mosaicPanelsYChanged(int)), this, SLOT(updateMosaicControls()));
+	connect(ocularsPlugin, SIGNAL(mosaicOverlapPercentChanged(double)), this, SLOT(updateMosaicControls()));
 
 	//Night mode
 	connect(&stelApp, SIGNAL(colorSchemeChanged(const QString&)), this, SLOT(setColorScheme(const QString&)));

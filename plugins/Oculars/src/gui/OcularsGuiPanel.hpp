@@ -159,10 +159,13 @@ private:
 	QGraphicsTextItem* fieldMosaicMode;
 	QGraphicsTextItem* fieldMosaicPanelsX;
 	QGraphicsTextItem* fieldMosaicPanelsY;
+	QGraphicsTextItem* fieldMosaicOverlap;
 	StelButton* prevMosaicPanelsXButton;
 	StelButton* nextMosaicPanelsXButton;
 	StelButton* prevMosaicPanelsYButton;
 	StelButton* nextMosaicPanelsYButton;
+	StelButton* prevMosaicOverlapButton;
+	StelButton* nextMosaicOverlapButton;
 	StelButton* toggleMosaicModeButton;
 
 	//! Sets the visibility of the ocular name label and the associated buttons.

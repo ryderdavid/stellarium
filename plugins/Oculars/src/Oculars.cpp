@@ -1579,6 +1579,8 @@ void Oculars::initializeActivationActions()
 	addAction("actionMosaic_PanelsX_Decrement", ocularsGroup, N_("Decrease X panels"), this, [this]{setMosaicPanelsX(getMosaicPanelsX() - 1);}, "");
 	addAction("actionMosaic_PanelsY_Increment", ocularsGroup, N_("Increase Y panels"), this, [this]{setMosaicPanelsY(getMosaicPanelsY() + 1);}, "");
 	addAction("actionMosaic_PanelsY_Decrement", ocularsGroup, N_("Decrease Y panels"), this, [this]{setMosaicPanelsY(getMosaicPanelsY() - 1);}, "");
+	addAction("actionMosaic_Overlap_Increment", ocularsGroup, N_("Increase overlap percentage"), this, [this]{setMosaicOverlapPercent(getMosaicOverlapPercent() + 5.0);}, "");
+	addAction("actionMosaic_Overlap_Decrement", ocularsGroup, N_("Decrease overlap percentage"), this, [this]{setMosaicOverlapPercent(getMosaicOverlapPercent() - 5.0);}, "");
 	addAction("actionMosaic_Rotation_Reset", ocularsGroup, N_("Reset mosaic rotation"), this, [this]{setMosaicRotationAngle(0.0);}, "", "");
 
 	// NOTE: GUI elements in OcularsGuiPanel

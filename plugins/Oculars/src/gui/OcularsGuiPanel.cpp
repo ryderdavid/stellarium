@@ -159,6 +159,7 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	fieldMosaicMode = new QGraphicsTextItem(ccdControls);
 	fieldMosaicPanelsX = new QGraphicsTextItem(ccdControls);
 	fieldMosaicPanelsY = new QGraphicsTextItem(ccdControls);
+	fieldMosaicOverlap = new QGraphicsTextItem(ccdControls);
 
 	prevMosaicPanelsXButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_PanelsX_Decrement");
 	prevMosaicPanelsXButton->setToolTip(q_("Decrease X panels"));
@@ -168,7 +169,11 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	prevMosaicPanelsYButton->setToolTip(q_("Decrease Y panels"));
 	nextMosaicPanelsYButton = new StelButton(ccdControls, nextArrow, nextArrowOff, QPixmap(), "actionMosaic_PanelsY_Increment");
 	nextMosaicPanelsYButton->setToolTip(q_("Increase Y panels"));
-	
+	prevMosaicOverlapButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_Overlap_Decrement");
+	prevMosaicOverlapButton->setToolTip(q_("Decrease overlap percentage"));
+	nextMosaicOverlapButton = new StelButton(ccdControls, nextArrow, nextArrowOff, QPixmap(), "actionMosaic_Overlap_Increment");
+	nextMosaicOverlapButton->setToolTip(q_("Increase overlap percentage"));
+
 	// Toggle mosaic mode button
 	toggleMosaicModeButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionShow_Mosaic_Mode");
 	toggleMosaicModeButton->setToolTip(q_("Toggle mosaic mode"));
@@ -257,10 +262,13 @@ OcularsGuiPanel::~OcularsGuiPanel()
 	delete fieldMosaicMode; fieldMosaicMode = Q_NULLPTR;
 	delete fieldMosaicPanelsX; fieldMosaicPanelsX = Q_NULLPTR;
 	delete fieldMosaicPanelsY; fieldMosaicPanelsY = Q_NULLPTR;
+	delete fieldMosaicOverlap; fieldMosaicOverlap = Q_NULLPTR;
 	delete prevMosaicPanelsXButton; prevMosaicPanelsXButton = Q_NULLPTR;
 	delete nextMosaicPanelsXButton; nextMosaicPanelsXButton = Q_NULLPTR;
 	delete prevMosaicPanelsYButton; prevMosaicPanelsYButton = Q_NULLPTR;
 	delete nextMosaicPanelsYButton; nextMosaicPanelsYButton = Q_NULLPTR;
+	delete prevMosaicOverlapButton; prevMosaicOverlapButton = Q_NULLPTR;
+	delete nextMosaicOverlapButton; nextMosaicOverlapButton = Q_NULLPTR;
 	delete toggleMosaicModeButton; toggleMosaicModeButton = Q_NULLPTR;
 }
 
@@ -1051,10 +1059,13 @@ void OcularsGuiPanel::updateMosaicControls()
 		fieldMosaicMode->setVisible(false);
 		fieldMosaicPanelsX->setVisible(false);
 		fieldMosaicPanelsY->setVisible(false);
+		fieldMosaicOverlap->setVisible(false);
 		prevMosaicPanelsXButton->setVisible(false);
 		nextMosaicPanelsXButton->setVisible(false);
 		prevMosaicPanelsYButton->setVisible(false);
 		nextMosaicPanelsYButton->setVisible(false);
+		prevMosaicOverlapButton->setVisible(false);
+		nextMosaicOverlapButton->setVisible(false);
 		toggleMosaicModeButton->setVisible(false);
 		return;
 	}
@@ -1110,16 +1121,30 @@ void OcularsGuiPanel::updateMosaicControls()
 	fieldMosaicPanelsY->setPlainText(panelsYLabel);
 	fieldMosaicPanelsY->setPos(posX, posY);
 	fieldMosaicPanelsY->setVisible(true);
-	
+
 	heightAdjustment = (fieldMosaicPanelsY->boundingRect().height() - prevMosaicPanelsYButton->boundingRect().height()) / 2.;
 	prevMosaicPanelsYButton->setPos(posX + fieldMosaicPanelsY->boundingRect().width() + 10, posY + heightAdjustment);
 	prevMosaicPanelsYButton->setVisible(true);
 	nextMosaicPanelsYButton->setPos(posX + fieldMosaicPanelsY->boundingRect().width() + prevMosaicPanelsYButton->boundingRect().width() + 15, posY + heightAdjustment);
 	nextMosaicPanelsYButton->setVisible(true);
 
+	posY += fieldMosaicPanelsY->boundingRect().height();
+
+	// Overlap control
+	QString overlapLabel = QString(q_("Overlap: %1%")).arg(ocularsPlugin->getMosaicOverlapPercent(), 0, 'f', 0);
+	fieldMosaicOverlap->setPlainText(overlapLabel);
+	fieldMosaicOverlap->setPos(posX, posY);
+	fieldMosaicOverlap->setVisible(true);
+
+	heightAdjustment = (fieldMosaicOverlap->boundingRect().height() - prevMosaicOverlapButton->boundingRect().height()) / 2.;
+	prevMosaicOverlapButton->setPos(posX + fieldMosaicOverlap->boundingRect().width() + 10, posY + heightAdjustment);
+	prevMosaicOverlapButton->setVisible(true);
+	nextMosaicOverlapButton->setPos(posX + fieldMosaicOverlap->boundingRect().width() + prevMosaicOverlapButton->boundingRect().width() + 15, posY + heightAdjustment);
+	nextMosaicOverlapButton->setVisible(true);
+
 	// Update ccdControls size to include mosaic controls
 	qreal widgetWidth = ccdControls->size().width();
-	qreal widgetHeight = posY + fieldMosaicPanelsY->boundingRect().height();
+	qreal widgetHeight = posY + fieldMosaicOverlap->boundingRect().height();
 	ccdControls->setMinimumSize(widgetWidth, widgetHeight);
 	ccdControls->resize(widgetWidth, widgetHeight);
 }

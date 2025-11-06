@@ -2146,12 +2146,7 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 	// Convert mosaic center to spherical coordinates
 	double centerRA, centerDec;
 	StelUtils::rectToSphe(&centerRA, &centerDec, core->equinoxEquToJ2000(mosaicCenter, StelCore::RefractionOff));
-	
-	// Rotation in radians
-	const double gridRotationRad = mosaicRotationAngle * (M_PI / 180.0);
-	const double cosRot = std::cos(gridRotationRad);
-	const double sinRot = std::sin(gridRotationRad);
-	
+
 	// Calculate panel positions
 	panels.reserve(mosaicPanelsX * mosaicPanelsY);
 	
@@ -2162,24 +2157,32 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			MosaicPanel panel;
 			panel.panelIndexX = i;
 			panel.panelIndexY = j;
-			
-			// Calculate local grid position (centered at origin)
-			// Center the grid: shift by (panelsX-1)/2 and (panelsY-1)/2
-			const double localX = (i - (mosaicPanelsX - 1) / 2.0) * stepX;
-			const double localY = (j - (mosaicPanelsY - 1) / 2.0) * stepY;
 
-			// Apply rotation to grid
-			const double rotatedX = localX * cosRot - localY * sinRot;
-			const double rotatedY = localX * sinRot + localY * cosRot;
+			// NINA-style sensor-aligned coordinate system:
+			// - X panels extend along sensor WIDTH dimension
+			// - Y panels extend along sensor HEIGHT dimension
+			// - All panels maintain the SAME rotation as the CCD sensor
 
-			// Convert angular offsets to RA/Dec offsets at the mosaic center
-			// For small angles near the equator, we can approximate:
-			// RA offset = rotatedX / cos(Dec)
-			// Dec offset = rotatedY
-			// Avoid division by zero near poles (cos approaches 0)
+			// Calculate offsets in SENSOR coordinates (centered at origin)
+			// sensorX = along sensor width, sensorY = along sensor height
+			const double sensorX = (i - (mosaicPanelsX - 1) / 2.0) * stepX;
+			const double sensorY = (j - (mosaicPanelsY - 1) / 2.0) * stepY;
+
+			// Apply CCD chip rotation to transform sensor offsets to sky offsets
+			// This ensures the mosaic grid aligns with the rotated sensor
+			const double chipRotRad = ccd->chipRotAngle() * (M_PI / 180.0);
+			const double cosChipRot = std::cos(chipRotRad);
+			const double sinChipRot = std::sin(chipRotRad);
+
+			// Rotate sensor offsets by chip rotation to get sky offsets
+			const double skyX = sensorX * cosChipRot - sensorY * sinChipRot;
+			const double skyY = sensorX * sinChipRot + sensorY * cosChipRot;
+
+			// Convert sky angular offsets (in degrees) to RA/Dec offsets at the mosaic center
+			// For small angles: RA offset = skyX / cos(Dec), Dec offset = skyY
 			const double cosDec = std::cos(centerDec);
-			const double raOffset = (std::abs(cosDec) > 0.01) ? rotatedX / cosDec : 0.0;
-			const double decOffset = rotatedY;
+			const double raOffset = (std::abs(cosDec) > 0.01) ? skyX / cosDec : 0.0;
+			const double decOffset = skyY;
 
 			// Calculate panel center RA/Dec
 			double panelRA = centerRA + raOffset * (M_PI / 180.0);
@@ -2188,24 +2191,25 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			// Debug first few panels
 			if (panels.size() < 3)
 			{
-				qDebug() << "Panel" << i << j << ": localX=" << localX << "localY=" << localY
-				         << "stepX=" << stepX << "stepY=" << stepY
+				qDebug() << "Panel" << i << j << ": sensorX=" << sensorX << "sensorY=" << sensorY
+				         << "chipRotDeg=" << ccd->chipRotAngle()
+				         << "skyX=" << skyX << "skyY=" << skyY
 				         << "raOffset=" << raOffset << "decOffset=" << decOffset;
 			}
 
 			// Normalize RA to [0, 2π)
 			panelRA = StelUtils::fmodpos(panelRA, 2.0 * M_PI);
-			
+
 			// Convert to 3D vector
 			StelUtils::spheToRect(panelRA, panelDec, panel.center);
-			
+
 			// Convert to appropriate coordinate frame
 			panel.center = core->j2000ToEquinoxEqu(panel.center, StelCore::RefractionOff);
 
-			// Panel rotation is only the CCD chip rotation
-			// Grid rotation is already applied to the panel positions above
-			panel.rotation = ccd->chipRotAngle() * (M_PI / 180.0);
-			
+			// All panels share the same rotation as the CCD sensor
+			// (No grid rotation applied - that's already in the position offsets)
+			panel.rotation = chipRotRad;
+
 			panels.append(panel);
 		}
 	}
@@ -2259,19 +2263,7 @@ void Oculars::paintMosaicBounds()
 
 	if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - calculated" << cachedMosaicPanels.size() << "panels";
 
-	// Calculate shared rotation matrix based on mosaic center (view center)
-	// All panels in the mosaic share the same orientation
-	Vec2i centerScreen(projector->getViewportPosX() + projector->getViewportWidth() / 2,
-			   projector->getViewportPosY() + projector->getViewportHeight() / 2);
-	Vec3d mosaicCenter;
-	projector->unProject(centerScreen[0], centerScreen[1], mosaicCenter);
-	double azimuth, elevation;
-	StelUtils::rectToSphe(&azimuth, &elevation, mosaicCenter);
-	const auto sharedRotationMatrix = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
-					  Mat4f::rotation(Vec3f(0,1,0), -elevation) *
-					  Mat4f::rotation(Vec3f(1,0,0), ccd->chipRotAngle() * (M_PI/180));
-
-	// Render each panel using the shared rotation matrix
+	// Render each panel (each calculates its own rotation matrix)
 	for (int i = 0; i < cachedMosaicPanels.size(); ++i)
 	{
 		const auto& panel = cachedMosaicPanels[i];
@@ -2284,11 +2276,11 @@ void Oculars::paintMosaicBounds()
 			         << "sky coords:" << panel.center[0] << panel.center[1] << panel.center[2]
 			         << "screen pos:" << panelScreenPos[0] << panelScreenPos[1];
 		}
-		drawMosaicPanelFrame(panel, projector, *ccd, lens, sharedRotationMatrix);
+		drawMosaicPanelFrame(panel, projector, *ccd, lens);
 	}
 }
 
-void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens, const Mat4f& sharedRotationMatrix)
+void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens)
 {
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
 	if (!telescope) return;

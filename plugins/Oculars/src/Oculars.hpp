@@ -451,6 +451,26 @@ private:
 	QVector<MosaicPanel> calculateMosaicPanels();
 	//! Render a single mosaic panel frame (each panel calculates its own rotation matrix)
 	void drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens);
+	//! Draw HUD around the entire mosaic boundary (not on individual panels)
+	void drawMosaicHUD(const StelProjectorP& projector, const CCD& ccd, const Telescope& telescope, const Lens* lens);
+	//! Render HUD text around a sensor frame (RA/Dec, dimensions, scale, rotation)
+	//! \param painter The painter to use for rendering text
+	//! \param projector The projector for coordinate transformations
+	//! \param centerPosition The 3D sky position of the sensor center
+	//! \param centerScreen The 2D screen position of the sensor center
+	//! \param frameRightWinDir The normalized window-space "right" direction vector
+	//! \param frameUpWinDir The normalized window-space "up" direction vector
+	//! \param boundingRect The bounding rectangle of the sensor frame (from drawSensorFrameAndOverlay)
+	//! \param ccd The CCD sensor
+	//! \param telescope The telescope
+	//! \param lens The optional lens
+	//! \param ccdXRatio Ratio of CCD width to screen FOV (for size threshold check)
+	//! \param ccdYRatio Ratio of CCD height to screen FOV (for size threshold check)
+	//! \param isMosaicMode Whether this is being called from mosaic mode (uses lower size threshold)
+	void paintSensorHUD(StelPainter& painter, const StelProjectorP& projector, const Vec3d& centerPosition,
+	                    const Vec2f& centerScreen, const Vec2f& frameRightWinDir, const Vec2f& frameUpWinDir,
+	                    const QRect& boundingRect, const CCD& ccd, const Telescope& telescope, const Lens* lens,
+	                    double ccdXRatio, double ccdYRatio, bool isMosaicMode = false);
 
 	//! Paints the text about the current object selections to the upper right hand of the screen.
 	//! Should only be called from a 'ready' state; currently from the draw() method.

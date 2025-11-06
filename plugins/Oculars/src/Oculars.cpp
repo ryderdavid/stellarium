@@ -2107,6 +2107,165 @@ void Oculars::paintCCDBounds()
 	}
 }
 
+void Oculars::paintSensorHUD(StelPainter& painter, const StelProjectorP& /*projector*/, const Vec3d& centerPosition,
+                              const Vec2f& centerScreen, const Vec2f& frameRightWinDir, const Vec2f& /*frameUpWinDir*/,
+                              const QRect& boundingRect, const CCD& ccd, const Telescope& telescope, const Lens* lens,
+                              double ccdXRatio, double ccdYRatio, bool isMosaicMode)
+{
+	StelCore *core = StelApp::getInstance().getCore();
+
+	// Tool for planning a mosaic astrophotography: shows a small cross at center of CCD's
+	// frame and equatorial coordinates for epoch J2000.0 of that center.
+	// Details: https://bugs.launchpad.net/stellarium/+bug/1404695
+
+	const double ratioLimit = isMosaicMode ? 0.05 : 0.375;  // Much lower threshold for mosaic mode
+	const double ratioLimitCrop = 0.75;
+	if (ccdXRatio < ratioLimit && ccdYRatio < ratioLimit)
+	{
+		// Sensor too small on screen, skip HUD
+		return;
+	}
+
+	StelProjector::StelProjectorParams params = core->getCurrentStelProjectorParams();
+	const double textRotationAngle = 180/M_PI * std::atan2(frameRightWinDir[1], frameRightWinDir[0]);
+	QTransform transform = QTransform().translate(centerScreen[0], centerScreen[1]).rotate(textRotationAngle);
+	QPoint a, b;
+
+	// Draw cross at center
+	const int cross = qRound(10 * params.devicePixelsPerPixel); // use permanent size of cross (10px)
+	a = transform.map(QPoint(-cross, -cross));
+	b = transform.map(QPoint(cross, cross));
+	painter.drawLine2d(a.x(), a.y(), b.x(), b.y());
+	a = transform.map(QPoint(-cross, cross));
+	b = transform.map(QPoint(cross, -cross));
+	painter.drawLine2d(a.x(), a.y(), b.x(), b.y());
+
+	// Calculate coordinates of the center and show it
+	double cx, cy;
+	QString cxt, cyt, coords;
+	bool withDecimalDegree = StelApp::getInstance().getFlagShowDecimalDegrees();
+	if (getFlagHorizontalCoordinates())
+	{
+		bool useSouthAzimuth = StelApp::getInstance().getFlagSouthAzimuthUsage();
+		coords = QString("%1:").arg(qc_("Az/Alt of cross", "abbreviated in the plugin"));
+		StelUtils::rectToSphe(&cy,&cx,core->equinoxEquToAltAz(centerPosition, StelCore::RefractionAuto));
+		const double direction = (useSouthAzimuth ? 2. : 3.); // N is zero, E is 90 degrees
+		cy = direction*M_PI - cy;
+		if (cy > M_PI*2)
+			cy -= M_PI*2;
+
+		if (withDecimalDegree)
+		{
+			cxt = StelUtils::radToDecDegStr(cy);
+			cyt = StelUtils::radToDecDegStr(cx);
+		}
+		else
+		{
+			cxt = StelUtils::radToDmsStr(cy);
+			cyt = StelUtils::radToDmsStr(cx);
+		}
+	}
+	else
+	{
+		coords = QString("%1:").arg(qc_("RA/Dec (J2000.0) of cross", "abbreviated in the plugin"));
+		StelUtils::rectToSphe(&cx,&cy,core->equinoxEquToJ2000(centerPosition, StelCore::RefractionOff)); // Calculate RA/DE (J2000.0) and show it...
+		if (withDecimalDegree)
+		{
+			cxt = StelUtils::radToDecDegStr(cx, 5, false, true);
+			cyt = StelUtils::radToDecDegStr(cy);
+		}
+		else
+		{
+			cxt = StelUtils::radToHmsStr(cx, true);
+			cyt = StelUtils::radToDmsStr(cy, true);
+		}
+	}
+
+	const auto fm = painter.getFontMetrics();
+	float scaleFactor = static_cast<float>(1.2 * params.devicePixelsPerPixel);
+
+	const auto topY = boundingRect.bottom();
+	const auto leftX = boundingRect.left();
+	const auto bottomY = boundingRect.top();
+	const auto rightX = boundingRect.right();
+
+	// FIXME: this is a workaround for a strange behavior of QFontMetrics.
+	// Without this rounding we get wrong results for fractional scaling
+	// factors: the labels on the right are shifted too far from the right
+	// border, and the interval between the lines is too large.
+	const auto fmPixelRatio = std::floor(params.devicePixelsPerPixel);
+
+	// Coordinates of center of visible field of view for CCD (red rectangle); above top-left corner
+	const auto coordsHeight = fm.boundingRect(coords).height() * fmPixelRatio;
+	a = transform.map(QPoint(leftX, topY + std::lround(1.5*coordsHeight)));
+	painter.drawText(a.x(), a.y(), coords, textRotationAngle);
+	coords = QString("%1/%2").arg(cxt.simplified(), cyt);
+	a = transform.map(QPoint(leftX, topY + std::lround(0.5*coordsHeight)));
+	painter.drawText(a.x(), a.y(), coords, textRotationAngle);
+
+	// Dimensions of visible field of view for CCD (red rectangle); below bottom-left corner
+	const double fovX = ccd.getActualFOVx(&telescope, lens) * (M_PI/180);
+	const double fovY = ccd.getActualFOVy(&telescope, lens) * (M_PI/180);
+	const auto dims = getDimensionsString(fovX, fovY);
+	const auto dimsHeight = fm.boundingRect(dims).height() * fmPixelRatio;
+	a = transform.map(QPoint(leftX, bottomY - std::lround(dimsHeight)));
+	painter.drawText(a.x(), a.y(), dims, textRotationAngle);
+
+	// Horizontal and vertical scales of visible field of view for CCD (red rectangle); below bottom-right corner
+	//TRANSLATORS: Unit of measure for scale - arc-seconds per pixel
+	QString unit = q_("\"/px");
+	QString scales = QString("%1%3 %4 %2%3").arg(QString::number(3600*ccd.getCentralAngularResolutionX(&telescope, lens), 'f', 4),
+						     QString::number(3600*ccd.getCentralAngularResolutionY(&telescope, lens), 'f', 4),
+						     unit, QChar(0x00D7));
+	const auto scalesBR = fm.boundingRect(scales);
+	a = transform.map(QPoint(rightX - std::lround(scalesBR.width() * fmPixelRatio),
+							 bottomY - std::lround(scalesBR.height() * fmPixelRatio)));
+	painter.drawText(a.x(), a.y(), scales, textRotationAngle);
+
+	// Rotation angle of visible field of view for CCD (red rectangle); above top-right corner
+	QString angle = QString("%1%2").arg(QString::number(ccd.chipRotAngle(), 'f', 1)).arg(QChar(0x00B0));
+	const auto angleBR = fm.boundingRect(angle);
+	a = transform.map(QPoint(rightX - std::lround(angleBR.width() * fmPixelRatio),
+							 topY + std::lround(0.5*angleBR.height() * fmPixelRatio)));
+	painter.drawText(a.x(), a.y(), angle, textRotationAngle);
+
+	if(flagShowCcdCropOverlay && (ccdXRatio>=ratioLimitCrop || ccdYRatio>=ratioLimitCrop))
+	{
+		// show the CCD crop overlay text
+		int actualCropOverlayX = ccd.resolutionX();
+		int actualCropOverlayY = ccd.resolutionY();
+		QString resolutionOverlayText = QString("%1%3 %4 %2%3").arg(QString::number(actualCropOverlayX, 'd', 0), QString::number(actualCropOverlayY, 'd', 0), qc_("px", "pixels"), QChar(0x00D7));
+		if(actualCropOverlayX!=ccdCropOverlayHSize || actualCropOverlayY!=ccdCropOverlayVSize)
+			resolutionOverlayText.append(" [*]");
+
+		const float overlayWidth = boundingRect.width();
+		const float overlayHeight = boundingRect.height();
+		const int fontSize = static_cast<int>(StelApp::getInstance().getScreenFontSize());
+		a = transform.map(QPoint(qRound(overlayWidth*0.5f - painter.getFontMetrics().boundingRect(resolutionOverlayText).width()), qRound(-overlayHeight*0.5f - fontSize*scaleFactor)));
+		painter.drawText(a.x(), a.y(), resolutionOverlayText, textRotationAngle);
+	}
+
+	if (getFlagMaxExposureTimeForCCD() && selectedSSO!=Q_NULLPTR)
+	{
+		double properMotion = StelUtils::fmodpos(selectedSSO->getHourlyProperMotion(core)[0], 2.0*M_PI) * M_180_PI;
+		if (properMotion>0.)
+		{
+			const double sqf = qMin(3600*ccd.getCentralAngularResolutionX(&telescope, lens),
+									3600*ccd.getCentralAngularResolutionY(&telescope, lens));
+			double exposure = 3600.*sqf/qRound(3600.*properMotion);
+			if (exposure>0.)
+			{
+				// TRANSLATORS: "Max exposure" is short version of phrase "Max time of exposure"
+				QString exposureTime = QString("%1: %2 %3").arg(q_("Max exposure"), QString::number(qRound(exposure*10.)/10., 'd', 1), qc_("s", "time"));
+				const auto expoBR = fm.boundingRect(exposureTime);
+				a = transform.map(QPoint(rightX - std::lround(expoBR.width() * fmPixelRatio),
+										 topY + std::lround(1.5*expoBR.height() * fmPixelRatio)));
+				painter.drawText(a.x(), a.y(), exposureTime, textRotationAngle);
+			}
+		}
+	}
+}
+
 QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 {
 	QVector<MosaicPanel> panels;
@@ -2280,6 +2439,12 @@ void Oculars::paintMosaicBounds()
 		}
 		drawMosaicPanelFrame(panel, projector, *ccd, lens);
 	}
+
+	// Draw HUD around the entire mosaic boundary (not on each individual panel)
+	if (!cachedMosaicPanels.isEmpty())
+	{
+		drawMosaicHUD(projector, *ccd, *telescope, lens);
+	}
 }
 
 void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens)
@@ -2320,6 +2485,84 @@ void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjector
 	const QSize overlaySize(ccd.resolutionX(), ccd.resolutionY());
 	drawSensorFrameAndOverlay(projector, panelRotationMatrix, frameUpWinDir, frameRightWinDir,
 	                         panelCenterWin2d, ccd, lens, overlaySize);
+}
+
+void Oculars::drawMosaicHUD(const StelProjectorP& projector, const CCD& ccd, const Telescope& telescope, const Lens* lens)
+{
+	static int hudDebugCount = 0;
+	if (hudDebugCount++ < 3)
+		qDebug() << "Oculars: drawMosaicHUD() called - panels X:" << mosaicPanelsX << "Y:" << mosaicPanelsY << "overlap:" << mosaicOverlapPercent;
+
+	// Get the view center (center of the entire mosaic)
+	StelCore *core = StelApp::getInstance().getCore();
+	Vec2i centerScreen(projector->getViewportPosX() + projector->getViewportWidth() / 2,
+	                   projector->getViewportPosY() + projector->getViewportHeight() / 2);
+
+	// Get the center position in sky coordinates
+	Vec3d centerPosition;
+	const auto equatProj = core->getProjection(StelCore::FrameEquinoxEqu, StelCore::RefractionMode::RefractionOff);
+	equatProj->unProject(centerScreen[0], centerScreen[1], centerPosition);
+
+	// Calculate rotation matrix for the mosaic center
+	double azimuth, elevation;
+	StelUtils::rectToSphe(&azimuth, &elevation, centerPosition);
+	const auto rotationMatrix = Mat4f::rotation(Vec3f(0,0,1), azimuth) *
+	                           Mat4f::rotation(Vec3f(0,1,0), -elevation) *
+	                           Mat4f::rotation(Vec3f(1,0,0), (ccd.chipRotAngle() + mosaicRotationAngle) * (M_PI/180));
+
+	// Compute frame orientation vectors
+	Vec3f frameUpWin, frameCenterWin, frameRightWin;
+	projector->project(rotationMatrix * Vec3f(1,0,1), frameUpWin);
+	projector->project(rotationMatrix * Vec3f(1,0,0), frameCenterWin);
+	projector->project(rotationMatrix * Vec3f(1,-1,0), frameRightWin);
+
+	const Vec2f frameUpWinDir = normalize(Vec2f(frameUpWin[0] - frameCenterWin[0],
+	                                            frameUpWin[1] - frameCenterWin[1]));
+	const Vec2f frameRightWinDir = normalize(Vec2f(frameRightWin[0] - frameCenterWin[0],
+	                                               frameRightWin[1] - frameCenterWin[1]));
+	const Vec2f centerScreen2f(centerScreen[0], centerScreen[1]);
+
+	// Calculate the bounding rectangle for the entire mosaic
+	// We need to find the total FOV covered by the mosaic grid
+	const double singlePanelFOVx = ccd.getActualFOVx(&telescope, lens);
+	const double singlePanelFOVy = ccd.getActualFOVy(&telescope, lens);
+
+	// Calculate overlap factor (e.g., 10% overlap means panels cover 90% unique area)
+	const double overlapFactor = 1.0 - (mosaicOverlapPercent / 100.0);
+
+	// Total mosaic FOV = (N * panel_FOV) - ((N-1) * overlap)
+	// Which simplifies to: panel_FOV + (N-1) * panel_FOV * overlapFactor
+	const double totalMosaicFOVx = singlePanelFOVx + (mosaicPanelsX - 1) * singlePanelFOVx * overlapFactor;
+	const double totalMosaicFOVy = singlePanelFOVy + (mosaicPanelsY - 1) * singlePanelFOVy * overlapFactor;
+
+	// Calculate bounding rect dimensions in screen pixels
+	StelProjector::StelProjectorParams params = core->getCurrentStelProjectorParams();
+	const double screenFOV = static_cast<double>(params.fov);
+	const double mosaicXRatio = totalMosaicFOVx / screenFOV;
+	const double mosaicYRatio = totalMosaicFOVy / screenFOV;
+
+	int aspectIndex = (params.viewportXywh[2] > params.viewportXywh[3]) ? 3 : 2;
+	const float mosaicWidth = params.viewportXywh[aspectIndex] * static_cast<float>(mosaicXRatio * params.devicePixelsPerPixel);
+	const float mosaicHeight = params.viewportXywh[aspectIndex] * static_cast<float>(mosaicYRatio * params.devicePixelsPerPixel);
+
+	// Create bounding rect centered at screen center
+	const QRect boundingRect(
+		QPoint(-mosaicWidth/2, -mosaicHeight/2),
+		QSize(mosaicWidth, mosaicHeight)
+	);
+
+	// Setup painter
+	StelPainter painter(projector);
+	painter.setLineSmooth(true);
+	painter.setColor(lineColor);
+	int fontSize = static_cast<int>(StelApp::getInstance().getScreenFontSize());
+	QFont font = QGuiApplication::font();
+	font.setPixelSize(fontSize);
+	painter.setFont(font);
+
+	// Draw the HUD around the mosaic boundary
+	paintSensorHUD(painter, projector, centerPosition, centerScreen2f, frameRightWinDir, frameUpWinDir,
+	               boundingRect, ccd, telescope, lens, mosaicXRatio, mosaicYRatio, false);
 }
 
 void Oculars::paintCrosshairs()

@@ -36,12 +36,16 @@ SET(Oculars_UIS
 )
 
 IF (${QT_VERSION_MAJOR} EQUAL "5")
-      QT5_WRAP_UI(Oculars_UIS_H ${Oculars_UIS})
-      QT5_ADD_RESOURCES(Oculars_RES_CXX ${Oculars_RES})
+     QT5_WRAP_UI(Oculars_UIS_H ${Oculars_UIS})
+     QT5_ADD_RESOURCES(Oculars_RES_CXX ${Oculars_RES})
 ELSE()
      QT_WRAP_UI(Oculars_UIS_H ${Oculars_UIS})
      QT_ADD_RESOURCES(Oculars_RES_CXX ${Oculars_RES})
 ENDIF()
+
+IF(ENABLE_TESTING)
+     ADD_SUBDIRECTORY(test)
+ENDIF(ENABLE_TESTING)
 
 SET(Oculars_Qt_Libraries Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Widgets)
 

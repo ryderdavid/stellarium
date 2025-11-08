@@ -160,6 +160,18 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	fieldMosaicPanelsX = new QGraphicsTextItem(ccdControls);
 	fieldMosaicPanelsY = new QGraphicsTextItem(ccdControls);
 	fieldMosaicOverlap = new QGraphicsTextItem(ccdControls);
+	
+	// Set font for mosaic controls (they were created after setControlsFont was called)
+	QFont mosaicFont = font();
+	mosaicFont.setPixelSize(plugin->getGuiPanelFontSize());
+	if (fieldMosaicMode)
+		fieldMosaicMode->setFont(mosaicFont);
+	if (fieldMosaicPanelsX)
+		fieldMosaicPanelsX->setFont(mosaicFont);
+	if (fieldMosaicPanelsY)
+		fieldMosaicPanelsY->setFont(mosaicFont);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setFont(mosaicFont);
 
 	prevMosaicPanelsXButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_PanelsX_Decrement");
 	prevMosaicPanelsXButton->setToolTip(q_("Decrease X panels"));
@@ -1134,6 +1146,8 @@ void OcularsGuiPanel::updateMosaicControls()
 	// Overlap control
 	QString overlapLabel = QString(q_("Overlap: %1%")).arg(ocularsPlugin->getMosaicOverlapPercent(), 0, 'f', 0);
 	fieldMosaicOverlap->setPlainText(overlapLabel);
+	// Ensure color matches other controls (get color from another field)
+	fieldMosaicOverlap->setDefaultTextColor(fieldCcdRotation->defaultTextColor());
 	fieldMosaicOverlap->setPos(posX, posY);
 	fieldMosaicOverlap->setVisible(true);
 
@@ -1258,6 +1272,8 @@ void OcularsGuiPanel::setControlsColor(const QColor& color)
 		fieldMosaicPanelsX->setDefaultTextColor(color);
 	if (fieldMosaicPanelsY)
 		fieldMosaicPanelsY->setDefaultTextColor(color);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setDefaultTextColor(color);
 }
 
 void OcularsGuiPanel::setControlsFont(const QFont& font)
@@ -1322,6 +1338,8 @@ void OcularsGuiPanel::setControlsFont(const QFont& font)
 		fieldMosaicPanelsX->setFont(font);
 	if (fieldMosaicPanelsY)
 		fieldMosaicPanelsY->setFont(font);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setFont(font);
 }
 
 void OcularsGuiPanel::setColorScheme(const QString &schemeName)

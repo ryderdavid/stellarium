@@ -1,12 +1,16 @@
 # MosaicOculars Plugin Troubleshooting Guide
 
+**Note:** This document was created during development when mosaic functionality was being developed as a standalone dynamic plugin. The functionality has since been integrated into the static Oculars plugin. This document is kept for historical reference only.
+
 ## Project Overview
 
-We are developing a **MosaicOculars** plugin for Stellarium, which is a fork of the existing **Oculars** plugin with additional mosaic planning capabilities. The plugin should:
+This document describes troubleshooting steps for the **MosaicOculars** plugin, which was a fork of the existing **Oculars** plugin with additional mosaic planning capabilities. The plugin was designed to:
 
 1. **Function as a standalone dynamic plugin** - Built independently of Stellarium core, installable to production Stellarium
 2. **Provide all Oculars functionality** - CCD/Telescope/Ocular/Lens management, FOV overlays, etc.
 3. **Add mosaic planning features** - Ability to visualize X×Y grids of overlapping panels with configurable rotation and overlap percentage
+
+**Current Status:** Mosaic functionality has been successfully integrated into the main Oculars plugin as a static plugin.
 
 ## Current Status
 

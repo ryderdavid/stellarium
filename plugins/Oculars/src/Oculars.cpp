@@ -158,7 +158,7 @@ Oculars::Oculars()
 	, actionOcularIncrement(Q_NULLPTR)
 	, actionOcularDecrement(Q_NULLPTR)
 	, guiPanel(Q_NULLPTR)
-	, guiPanelFontSize(StelApp::getInstance().getScreenFontSize() * GUI_PANEL_FONT_SIZE_FACTOR)
+	, guiPanelFontSize(StelApp::getDefaultGuiFontSize() * GUI_PANEL_FONT_SIZE_FACTOR) // Will be updated in constructor body if StelApp is available
 	, textColor(0.)
 	, lineColor(0.)
 	, focuserColor(0.)
@@ -194,12 +194,23 @@ Oculars::Oculars()
 	, mosaicPanelsCacheValid(false)
 {
 	setObjectName("Oculars");
-	setFontSizeFromApp(StelApp::getInstance().getScreenFontSize());
-	connect(&StelApp::getInstance(), SIGNAL(screenFontSizeChanged(int)), this, SLOT(setFontSizeFromApp(int)));
-	connect(&StelApp::getInstance(), &StelApp::screenButtonScaleChanged, this,
-	        [this]{const int size = StelApp::getInstance().getScreenFontSize();
-	               setFontSizeFromApp(size); /* and repeat to apply all the geometry changes */
-	               setFontSizeFromApp(size);});
+	if (StelApp::isInitialized())
+	{
+		const int fontSize = StelApp::getInstance().getScreenFontSize();
+		setFontSizeFromApp(fontSize);
+		guiPanelFontSize = fontSize * GUI_PANEL_FONT_SIZE_FACTOR;
+		connect(&StelApp::getInstance(), SIGNAL(screenFontSizeChanged(int)), this, SLOT(setFontSizeFromApp(int)));
+		connect(&StelApp::getInstance(), &StelApp::screenButtonScaleChanged, this,
+		        [this]{const int size = StelApp::getInstance().getScreenFontSize();
+		               setFontSizeFromApp(size); /* and repeat to apply all the geometry changes */
+		               setFontSizeFromApp(size);});
+	}
+	else
+	{
+		// Use default font size when StelApp is not available (e.g., in tests)
+		setFontSizeFromApp(StelApp::getDefaultGuiFontSize());
+		// guiPanelFontSize already set to default in initializer list
+	}
 
 	ccds = QList<CCD *>();
 	oculars = QList<Ocular *>();
@@ -2349,15 +2360,6 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 			double panelRA = centerRA + raOffset * (M_PI / 180.0);
 			double panelDec = centerDec + decOffset * (M_PI / 180.0);
 
-			// Debug first few panels
-			if (panels.size() < 3)
-			{
-				qDebug() << "Panel" << i << j << ": sensorX=" << sensorX << "sensorY=" << sensorY
-				         << "chipRotDeg=" << ccd->chipRotAngle()
-				         << "skyX=" << skyX << "skyY=" << skyY
-				         << "raOffset=" << raOffset << "decOffset=" << decOffset;
-			}
-
 			// Normalize RA to [0, 2π)
 			panelRA = StelUtils::fmodpos(panelRA, 2.0 * M_PI);
 
@@ -2380,35 +2382,19 @@ QVector<Oculars::MosaicPanel> Oculars::calculateMosaicPanels()
 
 void Oculars::paintMosaicBounds()
 {
-	static int callCount = 0;
-	if (callCount++ < 5)  // Only log first 5 calls to avoid spam
-		qDebug() << "Oculars: paintMosaicBounds() called, selectedCCDIndex=" << selectedCCDIndex << "selectedTelescopeIndex=" << selectedTelescopeIndex;
-
 	// Safety checks - return early if equipment not properly selected
 	if (selectedCCDIndex < 0 || selectedCCDIndex >= ccds.count())
-	{
-		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - invalid CCD index";
 		return;
-	}
 	if (selectedTelescopeIndex < 0 || selectedTelescopeIndex >= telescopes.count())
-	{
-		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - invalid telescope index";
 		return;
-	}
 
 	CCD *ccd = ccds[selectedCCDIndex];
 	if (!ccd)
-	{
-		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - CCD is NULL";
 		return;
-	}
 
 	Telescope *telescope = telescopes[selectedTelescopeIndex];
 	if (!telescope)
-	{
-		if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - telescope is NULL";
 		return;
-	}
 
 	Lens *lens = selectedLensIndex >= 0 ? lenses[selectedLensIndex] : Q_NULLPTR;
 
@@ -2422,21 +2408,10 @@ void Oculars::paintMosaicBounds()
 	// (optimization: could cache based on view center hash for better performance)
 	cachedMosaicPanels = calculateMosaicPanels();
 
-	if (callCount < 5) qDebug() << "Oculars: paintMosaicBounds() - calculated" << cachedMosaicPanels.size() << "panels";
-
 	// Render each panel (each calculates its own rotation matrix)
 	for (int i = 0; i < cachedMosaicPanels.size(); ++i)
 	{
 		const auto& panel = cachedMosaicPanels[i];
-		if (callCount < 5)
-		{
-			// Project panel center to screen to see where it appears
-			Vec3f panelScreenPos;
-			projector->project(panel.center, panelScreenPos);
-			qDebug() << "Oculars: Drawing panel" << i << "at grid position (" << panel.panelIndexX << "," << panel.panelIndexY << ")"
-			         << "sky coords:" << panel.center[0] << panel.center[1] << panel.center[2]
-			         << "screen pos:" << panelScreenPos[0] << panelScreenPos[1];
-		}
 		drawMosaicPanelFrame(panel, projector, *ccd, lens);
 	}
 
@@ -2489,10 +2464,6 @@ void Oculars::drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjector
 
 void Oculars::drawMosaicHUD(const StelProjectorP& projector, const CCD& ccd, const Telescope& telescope, const Lens* lens)
 {
-	static int hudDebugCount = 0;
-	if (hudDebugCount++ < 3)
-		qDebug() << "Oculars: drawMosaicHUD() called - panels X:" << mosaicPanelsX << "Y:" << mosaicPanelsY << "overlap:" << mosaicOverlapPercent;
-
 	// Get the view center (center of the entire mosaic)
 	StelCore *core = StelApp::getInstance().getCore();
 	Vec2i centerScreen(projector->getViewportPosX() + projector->getViewportWidth() / 2,
@@ -3610,18 +3581,20 @@ void Oculars::setFlagMosaicMode(const bool b)
 {
 	if (b != flagMosaicMode)
 	{
-		qDebug() << "Oculars: setFlagMosaicMode" << b << "flagShowCCD=" << flagShowCCD;
 		flagMosaicMode = b;
-		settings->setValue("mosaic_mode_enabled", b);
-		settings->sync();
+		if (settings)
+		{
+			settings->setValue("mosaic_mode_enabled", b);
+			settings->sync();
+		}
 		mosaicPanelsCacheValid = false; // Invalidate cache when mode changes
 
 		// Note: Mosaic mode is a variant of CCD viewing, not mutually exclusive
 		// Keep flagShowCCD true so the panel stays visible
 		// Ensure CCD mode is enabled when mosaic mode is turned on
-		if (b && !flagShowCCD)
+		// Only call toggleCCD if settings is initialized (plugin is fully initialized)
+		if (b && !flagShowCCD && settings)
 		{
-			qDebug() << "Oculars: Enabling CCD mode for mosaic";
 			toggleCCD(true);
 		}
 
@@ -3640,8 +3613,11 @@ void Oculars::setMosaicPanelsX(const int panels)
 	if (clampedPanels != mosaicPanelsX)
 	{
 		mosaicPanelsX = clampedPanels;
-		settings->setValue("mosaic_panels_x", mosaicPanelsX);
-		settings->sync();
+		if (settings)
+		{
+			settings->setValue("mosaic_panels_x", mosaicPanelsX);
+			settings->sync();
+		}
 		mosaicPanelsCacheValid = false; // Invalidate cache when panels change
 		emit mosaicPanelsXChanged(mosaicPanelsX);
 	}
@@ -3658,8 +3634,11 @@ void Oculars::setMosaicPanelsY(const int panels)
 	if (clampedPanels != mosaicPanelsY)
 	{
 		mosaicPanelsY = clampedPanels;
-		settings->setValue("mosaic_panels_y", mosaicPanelsY);
-		settings->sync();
+		if (settings)
+		{
+			settings->setValue("mosaic_panels_y", mosaicPanelsY);
+			settings->sync();
+		}
 		mosaicPanelsCacheValid = false; // Invalidate cache when panels change
 		emit mosaicPanelsYChanged(mosaicPanelsY);
 	}
@@ -3676,8 +3655,11 @@ void Oculars::setMosaicRotationAngle(const double angle)
 	if (std::abs(normalizedAngle - mosaicRotationAngle) > 0.001)
 	{
 		mosaicRotationAngle = normalizedAngle;
-		settings->setValue("mosaic_rotation_angle", mosaicRotationAngle);
-		settings->sync();
+		if (settings)
+		{
+			settings->setValue("mosaic_rotation_angle", mosaicRotationAngle);
+			settings->sync();
+		}
 		mosaicPanelsCacheValid = false; // Invalidate cache when rotation changes
 		emit mosaicRotationAngleChanged(mosaicRotationAngle);
 	}
@@ -3694,8 +3676,11 @@ void Oculars::setMosaicOverlapPercent(const double percent)
 	if (std::abs(clampedPercent - mosaicOverlapPercent) > 0.001)
 	{
 		mosaicOverlapPercent = clampedPercent;
-		settings->setValue("mosaic_overlap_percent", mosaicOverlapPercent);
-		settings->sync();
+		if (settings)
+		{
+			settings->setValue("mosaic_overlap_percent", mosaicOverlapPercent);
+			settings->sync();
+		}
 		mosaicPanelsCacheValid = false; // Invalidate cache when overlap changes
 		emit mosaicOverlapPercentChanged(mosaicOverlapPercent);
 	}

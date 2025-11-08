@@ -1,4 +1,6 @@
-# Dynamic Plugin GUI Recommendations for MosaicOculars
+# Dynamic Plugin GUI Recommendations
+
+**Note:** This document was created during development when mosaic functionality was being developed as a dynamic plugin. The functionality has since been integrated into the static Oculars plugin, so this document is kept for reference only.
 
 ## Problem Summary
 

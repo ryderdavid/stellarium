@@ -6,7 +6,7 @@
 	[
 		{
 			"id": "stars0",
-			"fileName": "stars_0_0v0_20.cat",
+			"fileName": "stars_0_0v0_18.cat",
 			"count": 0.005,
 			"magRange": [-2.00, 6.00],
 			"sizeMb": 0.2,
@@ -15,7 +15,7 @@
 		},
 		{
 			"id": "stars1",
-			"fileName": "stars_1_0v0_16.cat",
+			"fileName": "stars_1_0v0_15.cat",
 			"count": 0.022,
 			"magRange": [6.00, 7.50],
 			"sizeMb": 1.0,
@@ -24,7 +24,7 @@
 		},
 		{
 			"id": "stars2",
-			"fileName": "stars_2_0v0_17.cat",
+			"fileName": "stars_2_0v0_16.cat",
 			"count": 0.14,
 			"magRange": [7.50, 9.00],
 			"sizeMb": 6.5,

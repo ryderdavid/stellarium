@@ -63,6 +63,8 @@ private slots:
 	void updateLensControls();
 	//! Updates the information shown when an ocular overlay is displayed
 	void updateOcularControls();
+	//! Updates the mosaic controls
+	void updateMosaicControls();
 	//! Updates the information that depends on the current telescope.
 	//! Called in both updateOcularControls() and updateCcdControls().
 	void updateTelescopeControls();
@@ -152,6 +154,19 @@ private:
 	StelButton* rotatePrismPlus5Button = nullptr;
 	StelButton* rotatePrismPlus15Button = nullptr;
 	StelButton* rotatePrismPlus90Button = nullptr;
+
+	//Mosaic controls
+	QGraphicsTextItem* fieldMosaicMode;
+	QGraphicsTextItem* fieldMosaicPanelsX;
+	QGraphicsTextItem* fieldMosaicPanelsY;
+	QGraphicsTextItem* fieldMosaicOverlap;
+	StelButton* prevMosaicPanelsXButton;
+	StelButton* nextMosaicPanelsXButton;
+	StelButton* prevMosaicPanelsYButton;
+	StelButton* nextMosaicPanelsYButton;
+	StelButton* prevMosaicOverlapButton;
+	StelButton* nextMosaicOverlapButton;
+	StelButton* toggleMosaicModeButton;
 
 	//! Sets the visibility of the ocular name label and the associated buttons.
 	void setOcularControlsVisible(bool show);

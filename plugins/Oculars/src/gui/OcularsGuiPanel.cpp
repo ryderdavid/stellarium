@@ -155,6 +155,41 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	QPixmap naOff(":/graphicGui/btTimeForward-off.png");
 	QPixmap nextArrowOff = naOff.scaledToHeight(scale * StelButton::getInputPixmapsDevicePixelRatio(), Qt::SmoothTransformation);
 
+	//Mosaic controls (added to ccdControls) - created after arrow pixmaps are available
+	fieldMosaicMode = new QGraphicsTextItem(ccdControls);
+	fieldMosaicPanelsX = new QGraphicsTextItem(ccdControls);
+	fieldMosaicPanelsY = new QGraphicsTextItem(ccdControls);
+	fieldMosaicOverlap = new QGraphicsTextItem(ccdControls);
+	
+	// Set font for mosaic controls (they were created after setControlsFont was called)
+	QFont mosaicFont = font();
+	mosaicFont.setPixelSize(plugin->getGuiPanelFontSize());
+	if (fieldMosaicMode)
+		fieldMosaicMode->setFont(mosaicFont);
+	if (fieldMosaicPanelsX)
+		fieldMosaicPanelsX->setFont(mosaicFont);
+	if (fieldMosaicPanelsY)
+		fieldMosaicPanelsY->setFont(mosaicFont);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setFont(mosaicFont);
+
+	prevMosaicPanelsXButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_PanelsX_Decrement");
+	prevMosaicPanelsXButton->setToolTip(q_("Decrease X panels"));
+	nextMosaicPanelsXButton = new StelButton(ccdControls, nextArrow, nextArrowOff, QPixmap(), "actionMosaic_PanelsX_Increment");
+	nextMosaicPanelsXButton->setToolTip(q_("Increase X panels"));
+	prevMosaicPanelsYButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_PanelsY_Decrement");
+	prevMosaicPanelsYButton->setToolTip(q_("Decrease Y panels"));
+	nextMosaicPanelsYButton = new StelButton(ccdControls, nextArrow, nextArrowOff, QPixmap(), "actionMosaic_PanelsY_Increment");
+	nextMosaicPanelsYButton->setToolTip(q_("Increase Y panels"));
+	prevMosaicOverlapButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionMosaic_Overlap_Decrement");
+	prevMosaicOverlapButton->setToolTip(q_("Decrease overlap percentage"));
+	nextMosaicOverlapButton = new StelButton(ccdControls, nextArrow, nextArrowOff, QPixmap(), "actionMosaic_Overlap_Increment");
+	nextMosaicOverlapButton->setToolTip(q_("Increase overlap percentage"));
+
+	// Toggle mosaic mode button
+	toggleMosaicModeButton = new StelButton(ccdControls, prevArrow, prevArrowOff, QPixmap(), "actionShow_Mosaic_Mode");
+	toggleMosaicModeButton->setToolTip(q_("Toggle mosaic mode"));
+
 	prevOcularButton = new StelButton(ocularControls, prevArrow, prevArrowOff, QPixmap(), "actionShow_Ocular_Decrement");
 	prevOcularButton->setToolTip(q_("Select previous eyepiece"));
 	nextOcularButton = new StelButton(ocularControls, nextArrow, nextArrowOff, QPixmap(), "actionShow_Ocular_Increment");
@@ -189,6 +224,12 @@ OcularsGuiPanel::OcularsGuiPanel(Oculars* plugin,
 	connect(ocularsPlugin, SIGNAL(selectedLensChanged(int)),      this, SLOT(updateTelescopeControls()));
 	connect(ocularsPlugin, SIGNAL(selectedCCDRotationAngleChanged(double)),      this, SLOT(updateCcdControls()));
 	connect(ocularsPlugin, SIGNAL(selectedCCDPrismPositionAngleChanged(double)), this, SLOT(updateCcdControls()));
+	
+	//Connect mosaic signals
+	connect(ocularsPlugin, SIGNAL(flagMosaicModeChanged(bool)), this, SLOT(updateMosaicControls()));
+	connect(ocularsPlugin, SIGNAL(mosaicPanelsXChanged(int)), this, SLOT(updateMosaicControls()));
+	connect(ocularsPlugin, SIGNAL(mosaicPanelsYChanged(int)), this, SLOT(updateMosaicControls()));
+	connect(ocularsPlugin, SIGNAL(mosaicOverlapPercentChanged(double)), this, SLOT(updateMosaicControls()));
 
 	//Night mode
 	connect(&stelApp, SIGNAL(colorSchemeChanged(const QString&)), this, SLOT(setColorScheme(const QString&)));
@@ -229,6 +270,19 @@ OcularsGuiPanel::~OcularsGuiPanel()
 	delete fieldLimitMagnitude; fieldLimitMagnitude = Q_NULLPTR;
 	delete fieldLensName; fieldLensName = Q_NULLPTR;
 	delete fieldLensMultipler; fieldLensMultipler = Q_NULLPTR;
+	
+	//Mosaic controls
+	delete fieldMosaicMode; fieldMosaicMode = Q_NULLPTR;
+	delete fieldMosaicPanelsX; fieldMosaicPanelsX = Q_NULLPTR;
+	delete fieldMosaicPanelsY; fieldMosaicPanelsY = Q_NULLPTR;
+	delete fieldMosaicOverlap; fieldMosaicOverlap = Q_NULLPTR;
+	delete prevMosaicPanelsXButton; prevMosaicPanelsXButton = Q_NULLPTR;
+	delete nextMosaicPanelsXButton; nextMosaicPanelsXButton = Q_NULLPTR;
+	delete prevMosaicPanelsYButton; prevMosaicPanelsYButton = Q_NULLPTR;
+	delete nextMosaicPanelsYButton; nextMosaicPanelsYButton = Q_NULLPTR;
+	delete prevMosaicOverlapButton; prevMosaicOverlapButton = Q_NULLPTR;
+	delete nextMosaicOverlapButton; nextMosaicOverlapButton = Q_NULLPTR;
+	delete toggleMosaicModeButton; toggleMosaicModeButton = Q_NULLPTR;
 }
 
 void OcularsGuiPanel::showOcularGui()
@@ -635,6 +689,9 @@ void OcularsGuiPanel::updateCcdControls()
 	ccdControls->resize(widgetWidth, widgetHeight);
 	setCcdControlsVisible(ocularsPlugin->getEnableCCD());
 
+	//Update mosaic controls
+	updateMosaicControls();
+
 	updateTelescopeControls();//Contains a call to updatePosition()
 }
 
@@ -972,6 +1029,8 @@ void OcularsGuiPanel::setCcdControlsVisible(bool show)
 			ccdControls->setVisible(true);
 			mainLayout->insertItem(1, ccdControls);
 		}
+		// Update mosaic controls when CCD controls are shown
+		updateMosaicControls();
 	}
 	else
 	{
@@ -1004,6 +1063,105 @@ void OcularsGuiPanel::setTelescopeControlsVisible(bool show)
 	mainLayout->invalidate();
 	mainLayout->activate();
 	resize(mainLayout->geometry().width(), mainLayout->geometry().height());
+}
+
+void OcularsGuiPanel::updateMosaicControls()
+{
+	if (!ocularsPlugin->getEnableCCD() || !ccdControls->isVisible())
+	{
+		fieldMosaicMode->setVisible(false);
+		fieldMosaicPanelsX->setVisible(false);
+		fieldMosaicPanelsY->setVisible(false);
+		fieldMosaicOverlap->setVisible(false);
+		prevMosaicPanelsXButton->setVisible(false);
+		nextMosaicPanelsXButton->setVisible(false);
+		prevMosaicPanelsYButton->setVisible(false);
+		nextMosaicPanelsYButton->setVisible(false);
+		prevMosaicOverlapButton->setVisible(false);
+		nextMosaicOverlapButton->setVisible(false);
+		toggleMosaicModeButton->setVisible(false);
+		return;
+	}
+
+	// Find the bottom position after prism rotation controls (if they exist) or CCD rotation
+	qreal posX = fieldCcdRotation->x();
+	qreal posY = fieldCcdRotation->y() + fieldCcdRotation->boundingRect().height();
+	
+	// Check if prism rotation controls are visible
+	if (fieldPrismRotation->isVisible())
+	{
+		posY += fieldPrismRotation->boundingRect().height();
+		posY += rotatePrismMinus90Button->boundingRect().height();
+	}
+	else
+	{
+		// Position after CCD rotation buttons
+		posY += rotateCcdMinus90Button->boundingRect().height();
+	}
+	
+	// Add some spacing
+	posY += fieldCcdRotation->boundingRect().height() * 0.5;
+
+	// Mosaic mode toggle
+	QString mosaicModeLabel = ocularsPlugin->getFlagMosaicMode() ? q_("Mosaic: ON") : q_("Mosaic: OFF");
+	fieldMosaicMode->setPlainText(mosaicModeLabel);
+	fieldMosaicMode->setPos(posX, posY);
+	fieldMosaicMode->setVisible(true);
+	
+	// Toggle button (positioned next to the label)
+	qreal heightAdjustment = (fieldMosaicMode->boundingRect().height() - toggleMosaicModeButton->boundingRect().height()) / 2.;
+	toggleMosaicModeButton->setPos(posX + fieldMosaicMode->boundingRect().width() + 10, posY + heightAdjustment);
+	toggleMosaicModeButton->setVisible(true);
+	
+	posY += fieldMosaicMode->boundingRect().height();
+
+	// X Panels control
+	QString panelsXLabel = QString(q_("X Panels: %1")).arg(ocularsPlugin->getMosaicPanelsX());
+	fieldMosaicPanelsX->setPlainText(panelsXLabel);
+	fieldMosaicPanelsX->setPos(posX, posY);
+	fieldMosaicPanelsX->setVisible(true);
+	
+	heightAdjustment = (fieldMosaicPanelsX->boundingRect().height() - prevMosaicPanelsXButton->boundingRect().height()) / 2.;
+	prevMosaicPanelsXButton->setPos(posX + fieldMosaicPanelsX->boundingRect().width() + 10, posY + heightAdjustment);
+	prevMosaicPanelsXButton->setVisible(true);
+	nextMosaicPanelsXButton->setPos(posX + fieldMosaicPanelsX->boundingRect().width() + prevMosaicPanelsXButton->boundingRect().width() + 15, posY + heightAdjustment);
+	nextMosaicPanelsXButton->setVisible(true);
+	
+	posY += fieldMosaicPanelsX->boundingRect().height();
+
+	// Y Panels control
+	QString panelsYLabel = QString(q_("Y Panels: %1")).arg(ocularsPlugin->getMosaicPanelsY());
+	fieldMosaicPanelsY->setPlainText(panelsYLabel);
+	fieldMosaicPanelsY->setPos(posX, posY);
+	fieldMosaicPanelsY->setVisible(true);
+
+	heightAdjustment = (fieldMosaicPanelsY->boundingRect().height() - prevMosaicPanelsYButton->boundingRect().height()) / 2.;
+	prevMosaicPanelsYButton->setPos(posX + fieldMosaicPanelsY->boundingRect().width() + 10, posY + heightAdjustment);
+	prevMosaicPanelsYButton->setVisible(true);
+	nextMosaicPanelsYButton->setPos(posX + fieldMosaicPanelsY->boundingRect().width() + prevMosaicPanelsYButton->boundingRect().width() + 15, posY + heightAdjustment);
+	nextMosaicPanelsYButton->setVisible(true);
+
+	posY += fieldMosaicPanelsY->boundingRect().height();
+
+	// Overlap control
+	QString overlapLabel = QString(q_("Overlap: %1%")).arg(ocularsPlugin->getMosaicOverlapPercent(), 0, 'f', 0);
+	fieldMosaicOverlap->setPlainText(overlapLabel);
+	// Ensure color matches other controls (get color from another field)
+	fieldMosaicOverlap->setDefaultTextColor(fieldCcdRotation->defaultTextColor());
+	fieldMosaicOverlap->setPos(posX, posY);
+	fieldMosaicOverlap->setVisible(true);
+
+	heightAdjustment = (fieldMosaicOverlap->boundingRect().height() - prevMosaicOverlapButton->boundingRect().height()) / 2.;
+	prevMosaicOverlapButton->setPos(posX + fieldMosaicOverlap->boundingRect().width() + 10, posY + heightAdjustment);
+	prevMosaicOverlapButton->setVisible(true);
+	nextMosaicOverlapButton->setPos(posX + fieldMosaicOverlap->boundingRect().width() + prevMosaicOverlapButton->boundingRect().width() + 15, posY + heightAdjustment);
+	nextMosaicOverlapButton->setVisible(true);
+
+	// Update ccdControls size to include mosaic controls
+	qreal widgetWidth = ccdControls->size().width();
+	qreal widgetHeight = posY + fieldMosaicOverlap->boundingRect().height();
+	ccdControls->setMinimumSize(widgetWidth, widgetHeight);
+	ccdControls->resize(widgetWidth, widgetHeight);
 }
 
 void OcularsGuiPanel::updateMainButtonsPositions()
@@ -1107,6 +1265,15 @@ void OcularsGuiPanel::setControlsColor(const QColor& color)
 	fieldLimitMagnitude->setDefaultTextColor(color);
 	fieldLensName->setDefaultTextColor(color);
 	fieldLensMultipler->setDefaultTextColor(color);
+	// Mosaic controls
+	if (fieldMosaicMode)
+		fieldMosaicMode->setDefaultTextColor(color);
+	if (fieldMosaicPanelsX)
+		fieldMosaicPanelsX->setDefaultTextColor(color);
+	if (fieldMosaicPanelsY)
+		fieldMosaicPanelsY->setDefaultTextColor(color);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setDefaultTextColor(color);
 }
 
 void OcularsGuiPanel::setControlsFont(const QFont& font)
@@ -1164,6 +1331,15 @@ void OcularsGuiPanel::setControlsFont(const QFont& font)
 	fieldLimitMagnitude->setFont(font);
 	fieldLensName->setFont(font);
 	fieldLensMultipler->setFont(font);
+	// Mosaic controls
+	if (fieldMosaicMode)
+		fieldMosaicMode->setFont(font);
+	if (fieldMosaicPanelsX)
+		fieldMosaicPanelsX->setFont(font);
+	if (fieldMosaicPanelsY)
+		fieldMosaicPanelsY->setFont(font);
+	if (fieldMosaicOverlap)
+		fieldMosaicOverlap->setFont(font);
 }
 
 void OcularsGuiPanel::setColorScheme(const QString &schemeName)

@@ -129,6 +129,12 @@ class Oculars : public StelModule
 	Q_PROPERTY(bool flagUseLargeFocuserOverlay  READ getFlagUseLargeFocuserOverlay	WRITE setFlagUseLargeFocuserOverlay  NOTIFY flagUseLargeFocuserOverlayChanged)
 	Q_PROPERTY(Vec3f focuserColor               READ getFocuserColor                WRITE setFocuserColor                NOTIFY focuserColorChanged)
 
+	Q_PROPERTY(bool flagMosaicMode           READ getFlagMosaicMode           WRITE setFlagMosaicMode           NOTIFY flagMosaicModeChanged)
+	Q_PROPERTY(int mosaicPanelsX             READ getMosaicPanelsX             WRITE setMosaicPanelsX             NOTIFY mosaicPanelsXChanged)
+	Q_PROPERTY(int mosaicPanelsY             READ getMosaicPanelsY             WRITE setMosaicPanelsY             NOTIFY mosaicPanelsYChanged)
+	Q_PROPERTY(double mosaicRotationAngle    READ getMosaicRotationAngle      WRITE setMosaicRotationAngle       NOTIFY mosaicRotationAngleChanged)
+	Q_PROPERTY(double mosaicOverlapPercent  READ getMosaicOverlapPercent      WRITE setMosaicOverlapPercent      NOTIFY mosaicOverlapPercentChanged)
+
 	//BM: Temporary, until the GUI is finalized and some other method of getting
 	//info from the main class is implemented.
 	friend class OcularsGuiPanel;
@@ -321,6 +327,17 @@ public slots:
 	void setFlagUseLargeFocuserOverlay(const bool b);
 	bool getFlagUseLargeFocuserOverlay(void) const;
 
+	void setFlagMosaicMode(const bool b);
+	bool getFlagMosaicMode(void) const;
+	void setMosaicPanelsX(const int panels);
+	int getMosaicPanelsX(void) const;
+	void setMosaicPanelsY(const int panels);
+	int getMosaicPanelsY(void) const;
+	void setMosaicRotationAngle(const double angle);
+	double getMosaicRotationAngle(void) const;
+	void setMosaicOverlapPercent(const double percent);
+	double getMosaicOverlapPercent(void) const;
+
 signals:
 	void enableOcularChanged(bool value);
 	void enableCrosshairsChanged(bool value);
@@ -367,6 +384,11 @@ signals:
 	void flagUseSmallFocuserOverlayChanged(bool value);
 	void flagUseMediumFocuserOverlayChanged(bool value);
 	void flagUseLargeFocuserOverlayChanged(bool value);
+	void flagMosaicModeChanged(bool value);
+	void mosaicPanelsXChanged(int value);
+	void mosaicPanelsYChanged(int value);
+	void mosaicRotationAngleChanged(double value);
+	void mosaicOverlapPercentChanged(double value);
 
 private slots:
 	//! Signifies a change in ocular or telescope.  Sets new zoom level.
@@ -408,12 +430,47 @@ private:
 	                                const Lens* lens, const QSize& overlaySize);
 	//! Renders the CCD bounding box on-screen.  A telescope must be selected, or this call does nothing.
 	void paintCCDBounds();
+	//! Renders mosaic panels on-screen when mosaic mode is enabled.
+	void paintMosaicBounds();
 	//! Renders crosshairs into the viewport.
 	void paintCrosshairs();
 	//! Paint the mask into the viewport.
 	void paintOcularMask(const StelCore * core);
 	//! Renders the three Telrad circles, but only if not in ocular mode.
 	void paintTelrad();
+
+	//! Structure to represent a single mosaic panel
+	struct MosaicPanel {
+		Vec3d center;        //!< 3D sky position of panel center
+		double rotation;     //!< Panel rotation in radians (includes grid rotation + CCD rotation)
+		int panelIndexX;    //!< Grid X position (0 to panelsX-1)
+		int panelIndexY;    //!< Grid Y position (0 to panelsY-1)
+	};
+
+	//! Calculate mosaic panel positions based on current configuration
+	QVector<MosaicPanel> calculateMosaicPanels();
+	//! Render a single mosaic panel frame (each panel calculates its own rotation matrix)
+	void drawMosaicPanelFrame(const MosaicPanel& panel, const StelProjectorP& projector, const CCD& ccd, const Lens* lens);
+	//! Draw HUD around the entire mosaic boundary (not on individual panels)
+	void drawMosaicHUD(const StelProjectorP& projector, const CCD& ccd, const Telescope& telescope, const Lens* lens);
+	//! Render HUD text around a sensor frame (RA/Dec, dimensions, scale, rotation)
+	//! \param painter The painter to use for rendering text
+	//! \param projector The projector for coordinate transformations
+	//! \param centerPosition The 3D sky position of the sensor center
+	//! \param centerScreen The 2D screen position of the sensor center
+	//! \param frameRightWinDir The normalized window-space "right" direction vector
+	//! \param frameUpWinDir The normalized window-space "up" direction vector
+	//! \param boundingRect The bounding rectangle of the sensor frame (from drawSensorFrameAndOverlay)
+	//! \param ccd The CCD sensor
+	//! \param telescope The telescope
+	//! \param lens The optional lens
+	//! \param ccdXRatio Ratio of CCD width to screen FOV (for size threshold check)
+	//! \param ccdYRatio Ratio of CCD height to screen FOV (for size threshold check)
+	//! \param isMosaicMode Whether this is being called from mosaic mode (uses lower size threshold)
+	void paintSensorHUD(StelPainter& painter, const StelProjectorP& projector, const Vec3d& centerPosition,
+	                    const Vec2f& centerScreen, const Vec2f& frameRightWinDir, const Vec2f& frameUpWinDir,
+	                    const QRect& boundingRect, const CCD& ccd, const Telescope& telescope, const Lens* lens,
+	                    double ccdXRatio, double ccdYRatio, bool isMosaicMode = false);
 
 	//! Paints the text about the current object selections to the upper right hand of the screen.
 	//! Should only be called from a 'ready' state; currently from the draw() method.
@@ -580,6 +637,15 @@ private:
 	bool flagUseSmallFocuserOverlay;	//!< Flag used to track if a small-sized focuser (1.25") overlay should be shown.
 	bool flagUseMediumFocuserOverlay;	//!< Flag used to track if a medium-sized focuser (2.0") overlay should be shown.
 	bool flagUseLargeFocuserOverlay;	//!< Flag used to track if a large-sized focuser (3.3") overlay should be shown.
+
+	// Mosaic planning configuration
+	bool flagMosaicMode;		//!< If true, display mosaic grid instead of single CCD frame
+	int mosaicPanelsX;		//!< Number of panels in X-axis (1-20)
+	int mosaicPanelsY;		//!< Number of panels in Y-axis (1-20)
+	double mosaicRotationAngle;	//!< Rotation angle of entire mosaic grid in degrees (0-360)
+	double mosaicOverlapPercent;	//!< Overlap percentage between adjacent panels (0-50)
+	QVector<MosaicPanel> cachedMosaicPanels;	//!< Cached panel calculations (recompute when params change)
+	bool mosaicPanelsCacheValid;		//!< Flag indicating if cached panels are valid
 };
 
 

@@ -558,6 +558,8 @@ ADD_PLUGIN(Exoplanets 1)
 ADD_PLUGIN(EquationOfTime 1)
 ADD_PLUGIN(MeteorShowers 1)
 ADD_PLUGIN(MosaicCamera 1)
+# MosaicPlanner functionality integrated into Oculars plugin
+# ADD_PLUGIN(MosaicPlanner 1)
 ADD_PLUGIN(NavStars 1)
 ADD_PLUGIN(NebulaTextures 1)
 ADD_PLUGIN(Novae 1)

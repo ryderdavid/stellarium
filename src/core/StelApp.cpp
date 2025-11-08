@@ -229,6 +229,11 @@ Q_IMPORT_PLUGIN(NebulaTexturesStelPluginInterface)
 Q_IMPORT_PLUGIN(MosaicCameraStelPluginInterface)
 #endif
 
+// MosaicPlanner functionality integrated into Oculars plugin
+//#ifdef USE_STATIC_PLUGIN_MOSAICPLANNER
+//Q_IMPORT_PLUGIN(MosaicPlannerStelPluginInterface)
+//#endif
+
 // Initialize static variables
 StelApp* StelApp::singleton = Q_NULLPTR;
 qint64 StelApp::startMSecs = 0;

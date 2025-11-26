@@ -88,6 +88,14 @@ void CompletionListModel::setValues(const QStringList& v, const QStringList& rv)
 	updateText();
 }
 
+void CompletionListModel::setValuesWithModules(const QStringList& v, const QStringList& rv, const QMap<QString, QString>& modules)
+{
+	values=v;
+	recentValues=rv;
+	objectModules=modules;
+	updateText();
+}
+
 void CompletionListModel::appendRecentValues(const QStringList& v)
 {
 	recentValues+=v;
@@ -99,11 +107,23 @@ void CompletionListModel::appendValues(const QStringList& v)
 	updateText();
 }
 
+void CompletionListModel::appendValuesWithModules(const QStringList& v, const QMap<QString, QString>& modules)
+{
+	// Append the module information as object types to object names
+	values+=v;
+	for (auto it = modules.constBegin(); it != modules.constEnd(); ++it)
+	{
+		objectModules[it.key()] = it.value();
+	}
+	updateText();
+}
+
 void CompletionListModel::clearValues()
 {
 	// Default: Show recent values
 	values.clear();
 	values = recentValues;
+	objectModules.clear();
 	selectedIdx=0;
 	updateText();
 }
@@ -147,17 +167,58 @@ QVariant CompletionListModel::data(const QModelIndex &index, int role) const
 	if (!index.isValid())
 	    return QVariant();
 
+	QString objectName = values.value(index.row());
+
+	// Return the original object name for UserRole (used by gotoObject)
+	if(role == Qt::UserRole)
+	{
+		return objectName;
+	}
+
 	// Bold recent objects
 	if(role == Qt::FontRole)
 	{
 	    QFont font;
-	    bool toBold = recentValues.contains(index.data(Qt::DisplayRole).toString()) ?
-				    true : false;
+	    bool toBold = recentValues.contains(objectName);
 	    font.setBold(toBold);
 	    return font;
 	}
 
-	return QStringListModel::data(index, role);
+	// Display object name with module type (lazy-loaded for non-SIMBAD objects)
+	if(role == Qt::DisplayRole)
+	{
+		// Check if we already have module info cached
+		if (objectModules.contains(objectName))
+		{
+			QString moduleType = objectModules[objectName];
+			return QString("%1 (%2)").arg(objectName, moduleType);
+		}
+		
+		// For non-cached, non-recent objects, do a lazy lookup and cache it
+		if (objectMgr && !recentValues.contains(objectName))
+		{
+			StelObjectP obj = objectMgr->searchByNameI18n(objectName);
+			if (!obj)
+				obj = objectMgr->searchByName(objectName);
+			if (obj)
+			{
+				QString moduleType = obj->getObjectTypeI18n();
+				objectModules[objectName] = moduleType;
+				return QString("%1 (%2)").arg(objectName, moduleType);
+			}
+		}
+		
+		// Fallback: just return the name
+		return objectName;
+	}
+
+	// For EditRole, return the original name too
+	if(role == Qt::EditRole)
+	{
+		return objectName;
+	}
+
+	return QVariant();
 }
 
 // Start of members for class SearchDialog
@@ -202,6 +263,7 @@ SearchDialog::SearchDialog(QObject* parent)
 
 	// Init CompletionListModel
 	searchListModel = new CompletionListModel();
+	searchListModel->setObjectMgr(objectMgr);
 
 	// Find recent object search data file
 	recentObjectSearchesJsonPath = StelFileMgr::findFile("data", static_cast<StelFileMgr::Flags>(StelFileMgr::Directory | StelFileMgr::Writable)) + "/recentObjectSearches.json";
@@ -965,7 +1027,7 @@ void SearchDialog::onSearchTextChanged(const QString& text)
 		// Clean up matches
 		adjustMatchesResult(allMatches, recentMatches, matches, maxNbItem);
 
-		// Updates values
+		// Updates values - module info will be fetched on-demand
 		resetSearchResultDisplay(allMatches, recentMatches);
 
 		// Update push button enabled state
@@ -981,6 +1043,26 @@ void SearchDialog::updateRecentSearchList(const QString &nameI18n)
 {
 	if(nameI18n.isEmpty())
 		return;
+
+	// Capture object type for this search
+	StelObjectP obj = objectMgr->searchByNameI18n(nameI18n);
+	if (!obj)
+		obj = objectMgr->searchByName(nameI18n);
+
+	if (obj)
+	{
+		QString objectType = obj->getObjectTypeI18n();
+		recentObjectSearchesData.objectTypes[nameI18n] = objectType;
+	}
+	else if (simbadObjectTypes.contains(nameI18n))
+	{
+		// For SIMBAD objects, use the type from SIMBAD
+		QString objType = simbadObjectTypes.value(nameI18n, "");
+		if (!objType.isEmpty())
+		recentObjectSearchesData.objectTypes[nameI18n] = QString("SIMBAD; %1").arg(qc_(objType, "SIMBAD object type"));
+		else
+		recentObjectSearchesData.objectTypes[nameI18n] = QString("SIMBAD");
+	}
 
 	// Prepend & remove duplicates
 	recentObjectSearchesData.recentList.prepend(nameI18n);
@@ -1027,10 +1109,12 @@ void SearchDialog::adjustMatchesResult(QStringList &allMatches, QStringList& rec
 	// Adjust recent matches to preferred max size
 	recentMatches = recentMatches.mid(0, recentObjectSearchesData.maxSize);
 
-	// Find total size of both matches
-	tempMatches << recentMatches << matches; // unsorted
-	tempMatches.removeDuplicates();
-	tempSize = tempMatches.size();
+	// Remove duplicates within recent matches only
+	recentMatches.removeDuplicates();
+
+	// Find total size - but DON'T remove duplicates between recent and matches
+	// This allows objects to appear in both local and SIMBAD results
+	tempSize = recentMatches.size() + matches.size();
 
 	// Adjust match size to be within range
 	if(tempSize>maxNbItem)
@@ -1041,9 +1125,6 @@ void SearchDialog::adjustMatchesResult(QStringList &allMatches, QStringList& rec
 
 	// Combine list: ordered by recent searches then relevance
 	allMatches << recentMatches << matches;
-
-	// Remove possible duplicates from both lists
-	allMatches.removeDuplicates();
 }
 
 
@@ -1053,6 +1134,18 @@ void SearchDialog::resetSearchResultDisplay(QStringList allMatches,
 	// Updates values
 	searchListModel->appendValues(allMatches);
 	searchListModel->appendRecentValues(recentMatches);
+
+	// Pass saved object types for recent objects to the model
+	QMap<QString, QString> recentObjectTypes; 
+	for (const QString& objName: recentMatches)
+	{
+		if (recentObjectSearchesData.objectTypes.contains(objName))
+		{
+			recentObjectTypes[objName] = recentObjectSearchesData.objectTypes[objName];
+		}
+	}
+	// Update display with object types
+	searchListModel->setValuesWithModules(allMatches, recentMatches, recentObjectTypes);
 
 	// Update display
 	searchListModel->setValues(allMatches, recentMatches);
@@ -1109,6 +1202,14 @@ void SearchDialog::loadRecentSearches()
 
 			// Get user's recentList data (if possible)
 			recentObjectSearchesData.recentList = recentSearchData.value("recentList").toStringList();
+		
+			// Load object types if available
+			QVariantMap objectTypesMap = recentSearchData.value("objectTypes").toMap();
+			recentObjectSearchesData.objectTypes.clear();
+			for (auto it = objectTypesMap.constBegin(); it != objectTypesMap.constEnd(); ++it)
+			{
+				recentObjectSearchesData.objectTypes[it.key()] = it.value().toString();
+			}
 		}
 		catch (std::runtime_error &e)
 		{
@@ -1139,6 +1240,15 @@ void SearchDialog::saveRecentSearches()
 	rslDataList.insert("maxSize", recentObjectSearchesData.maxSize);
 	rslDataList.insert("recentList", recentObjectSearchesData.recentList);
 	
+	// Save object types as a QVariantMap
+	QVariantMap objectTypesMap;
+	for (auto it = recentObjectSearchesData.objectTypes.constBegin();
+		it != recentObjectSearchesData.objectTypes.constEnd(); ++it)
+	{
+		objectTypesMap.insert(it.key(), it.value());
+	}
+	rslDataList.insert("objectTypes", objectTypesMap);
+
 	QVariantMap rsList;
 	rsList.insert("recentObjectSearches", rslDataList);
 
@@ -1226,7 +1336,22 @@ void SearchDialog::onSimbadStatusChanged()
 	if (simbadReply->getCurrentStatus()==SimbadLookupReply::SimbadLookupFinished)
 	{
 		simbadResults = simbadReply->getResults();
-		searchListModel->appendValues(simbadResults.keys());
+		simbadObjectTypes = simbadReply->getObjectTypes();
+		
+		QStringList SimbadNames;
+		QMap<QString, QString> moduleInfo;
+		
+		for (const QString& objName : simbadResults.keys())
+		{
+			SimbadNames.append(objName);
+			QString objType = simbadObjectTypes.value(objName, "");
+			if (!objType.isEmpty())
+				moduleInfo[objName] = QString("SIMBAD; %1").arg(qc_(objType, "SIMBAD object type"));
+			else
+				moduleInfo[objName] = "SIMBAD";
+		}
+		
+		searchListModel->appendValuesWithModules(SimbadNames, moduleInfo);
 		// Update push button enabled state
 		setPushButtonGotoSearch();
 	}
@@ -1307,7 +1432,8 @@ void SearchDialog::gotoObject(const QString &nameI18n)
 		{
                         if (useAutoClosing)
                                 close();
-			GETSTELMODULE(CustomObjectMgr)->addPersistentObject(nameI18n, simbadResults[nameI18n]);
+			QString objType = simbadObjectTypes.value(nameI18n, "");
+			GETSTELMODULE(CustomObjectMgr)->addPersistentObject(nameI18n, simbadResults[nameI18n], QString("SIMBAD; %1").arg(qc_(objType, "SIMBAD object type")));
 			ui->lineEditSearchSkyObject->clear();
 			searchListModel->clearValues();
 			if (objectMgr->findAndSelect(nameI18n))
@@ -1375,7 +1501,14 @@ void SearchDialog::gotoObject(const QString &nameI18n, const QString &objType)
 
 void SearchDialog::gotoObject(const QModelIndex &modelIndex)
 {
-	gotoObject(modelIndex.model()->data(modelIndex, Qt::DisplayRole).toString());
+	// Use UserRole to get the original object name (without module type suffix)
+	QString objectName = modelIndex.model()->data(modelIndex, Qt::UserRole).toString();
+	if (objectName.isEmpty())
+	{
+		// Fallback to DisplayRole if UserRole is not available
+		objectName = modelIndex.model()->data(modelIndex, Qt::DisplayRole).toString();
+	}
+	gotoObject(objectName);
 }
 
 void SearchDialog::gotoObjectWithType(const QModelIndex &modelIndex)

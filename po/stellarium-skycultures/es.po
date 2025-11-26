@@ -22439,7 +22439,7 @@ msgstr "Regla textil"
 msgid "Bó Dù"
 msgstr "Bó Dù"
 
-#. Chinese constellation, native: 参旗, pronounce: Cān Qí
+#. Chinese constellation, native: 参旗, pronounce: Shēn Qí
 #. Pinyin transliteration
 #. Pinyin transliteration
 #. Pinyin transliteration
@@ -22469,8 +22469,10 @@ msgstr "Insignia de tres estrellas"
 
 #. Pronounce entry for Chinese constellation, native: 参旗, English: Banner of
 #. Three Stars
-msgid "Cān Qí"
-msgstr "Cān Qí"
+#. Chinese Song Dynasty Sky constellation, native: 参旗, English: Banner of
+#. Three Stars
+msgid "Shēn Qí"
+msgstr "Shēn Qí"
 
 #. Chinese constellation, native: 厕, pronounce: Cè
 #. Pinyin transliteration
@@ -22636,12 +22638,13 @@ msgstr "Chē Sì"
 #. Pinyin transliteration
 #. Chinese Chenzhuo Sky (3rd Century) constellation, native: 刍藁, pronounce:
 #. Chu Hao
-#. Chinese Song Dynasty Sky constellation, native: 刍藁, pronounce: Chú Hǎo
+#. Chinese Song Dynasty Sky constellation, native: 刍藁, pronounce: Chú Gǎo
 #. Modern (Chinese) asterism
 msgid "Hay"
 msgstr "Heno"
 
 #. Pronounce entry for Chinese constellation, native: 刍藁, English: Hay
+#. Chinese Song Dynasty Sky constellation, native: 刍藁, English: Hay
 msgid "Chú Gǎo"
 msgstr "Chú Gǎo"
 
@@ -24450,7 +24453,7 @@ msgctxt "abbreviation"
 msgid "117"
 msgstr "117"
 
-#. Chinese constellation, native: 九斿, pronounce: Jiǔ Liú
+#. Chinese constellation, native: 九斿, pronounce: Jiǔ Yóu
 #. Pinyin transliteration
 #. Pinyin transliteration
 #. Pinyin transliteration
@@ -24468,7 +24471,7 @@ msgstr "117"
 #. Pinyin transliteration
 #. Chinese Chenzhuo Sky (3rd Century) constellation, native: 九斿, pronounce:
 #. Jiu Liu
-#. Chinese Song Dynasty Sky constellation, native: 九斿, pronounce: Jiǔ Liú
+#. Chinese Song Dynasty Sky constellation, native: 九斿, pronounce: Jiǔ Yóu
 #. Modern (Chinese) asterism
 msgid "Imperial Military Flag"
 msgstr "Bandera militar imperial"
@@ -24477,8 +24480,8 @@ msgstr "Bandera militar imperial"
 #. Military Flag
 #. Chinese Song Dynasty Sky constellation, native: 九斿, English: Imperial
 #. Military Flag
-msgid "Jiǔ Liú"
-msgstr "Jiǔ Liú"
+msgid "Jiǔ Yóu"
+msgstr "Jiǔ Yóu"
 
 #. Abbreviation of constellation in Chinese sky culture, name: Imperial
 #. Military Flag
@@ -26044,7 +26047,7 @@ msgctxt "abbreviation"
 msgid "171"
 msgstr "171"
 
-#. Chinese constellation, native: 阙丘, pronounce: Quē Qiū
+#. Chinese constellation, native: 阙丘, pronounce: Què Qiū
 #. Pinyin transliteration
 #. Pinyin transliteration
 #. Pinyin transliteration
@@ -26055,15 +26058,15 @@ msgstr "171"
 #. Pinyin transliteration
 #. Chinese Chenzhuo Sky (3rd Century) constellation, native: 阙丘, pronounce:
 #. Que Qiu
-#. Chinese Song Dynasty Sky constellation, native: 阙丘, pronounce: Quē Qiū
+#. Chinese Song Dynasty Sky constellation, native: 阙丘, pronounce: Què Qiū
 #. Modern (Chinese) asterism
 msgid "Palace Gate"
 msgstr "Puerta del palacio"
 
 #. Pronounce entry for Chinese constellation, native: 阙丘, English: Palace Gate
 #. Chinese Song Dynasty Sky constellation, native: 阙丘, English: Palace Gate
-msgid "Quē Qiū"
-msgstr "Quē Qiū"
+msgid "Què Qiū"
+msgstr "Què Qiū"
 
 #. Abbreviation of constellation in Chinese sky culture, name: Palace Gate
 #. Abbreviation of constellation in Korean sky culture, name: Scout of Three
@@ -29528,7 +29531,7 @@ msgid "279"
 msgstr "279"
 
 #. Chinese constellation, native: 钺(附井宿), pronounce: Yuè
-#. Chinese Song Dynasty Sky constellation, native: 钺(井宿), pronounce: Yuè
+#. Chinese Song Dynasty Sky constellation, native: 钺(附井宿), pronounce: Yuè
 #. Modern (Chinese) asterism
 msgid "Battle Axe (Vassal of Well)"
 msgstr "Hacha de batalla (vasallo del pozo)"
@@ -29546,12 +29549,14 @@ msgstr "Hacha de batalla (vasallo del pozo)"
 #. Pronounce entry for Chinese name for NAME Moon
 #. Chinese name for NAME Moon, native: 月
 #. Chinese Song Dynasty Sky constellation, native: 月, English: Lunar Star
-#. Chinese Song Dynasty Sky constellation, native: 钺(井宿), English: Battle Axe
+#. Chinese Song Dynasty Sky constellation, native: 钺(附井宿), English: Battle Axe
 #. (Vassal of Well)
 #. Pronounce entry for Chinese Song Dynasty Sky name for HIP 19038
 #. Chinese Song Dynasty Sky name for HIP 19038, native: 月
 #. Pronounce entry for Chinese Song Dynasty Sky name for HIP 29655
 #. Chinese Song Dynasty Sky name for HIP 29655, native: 钺
+#. Pronounce entry for Chinese Song Dynasty Sky name for HIP 102014
+#. Chinese Song Dynasty Sky name for HIP 102014, native: 越
 #. Pronounce entry for Chinese Song Dynasty Sky name for NAME Moon
 #. Chinese Song Dynasty Sky name for NAME Moon, native: 月
 msgid "Yuè"
@@ -39543,6 +39548,8 @@ msgstr "Niǎndào zēng"
 #. Pronounce entry for Chinese name for HIP 93747
 #. Chinese name for HIP 93747, native: 吴越
 #. Pinyin transliteration
+#. Pronounce entry for Chinese Song Dynasty Sky name for HIP 93747
+#. Chinese Song Dynasty Sky name for HIP 93747, native: 吴越
 msgid "Wúyuè"
 msgstr "Wúyuè"
 
@@ -47137,16 +47144,6 @@ msgstr "13Z"
 msgid "Tǔ Sī Kōng(Kuí Xiù)"
 msgstr "Tǔ Sī Kōng(Kuí Xiù)"
 
-#. Pronounce entry for Chinese Song Dynasty Sky constellation, native: 刍藁,
-#. English: Hay
-msgid "Chú Hǎo"
-msgstr "Chú Hǎo"
-
-#. Pronounce entry for Chinese Song Dynasty Sky constellation, native: 参旗,
-#. English: Banner of Three Stars
-msgid "Shēn Qí"
-msgstr "Shēn Qí"
-
 #. Pronounce entry for Chinese Song Dynasty Sky constellation, native: 狼,
 #. English: Wolf
 #. Pronounce entry for Chinese Song Dynasty Sky name for HIP 32349
@@ -48399,11 +48396,6 @@ msgstr "Shàn"
 msgid "Tiānfǔ"
 msgstr "Tiānfǔ"
 
-#. Pronounce entry for Chinese Song Dynasty Sky name for HIP 93747
-#. Chinese Song Dynasty Sky name for HIP 93747, native: 吴越
-msgid "Wúyuē"
-msgstr "Wúyuē"
-
 #. Pronounce entry for Chinese Song Dynasty Sky name for HIP 93864
 #. Chinese Song Dynasty Sky name for HIP 93864, native: 天梁
 msgid "Tiānliáng"
@@ -48444,11 +48436,6 @@ msgstr "Zuǒjiāngjūn"
 #. Chinese Song Dynasty Sky name for HIP 102014, native: 越
 msgid "Yue State"
 msgstr "Estado Yue"
-
-#. Pronounce entry for Chinese Song Dynasty Sky name for HIP 102014
-#. Chinese Song Dynasty Sky name for HIP 102014, native: 越
-msgid "Yuē"
-msgstr "Yuē"
 
 #. Chinese Song Dynasty Sky name for HIP 102831, native: 齐
 msgid "Qi State"
@@ -48499,8 +48486,8 @@ msgstr "Máotōu"
 
 #. Pronounce entry for Chinese Song Dynasty Sky name for NAME Jupiter
 #. Chinese Song Dynasty Sky name for NAME Jupiter, native: 岁星
-msgid "Sùixīng"
-msgstr "Sùixīng"
+msgid "Suìxīng"
+msgstr "Suìxīng"
 
 #. Pronounce entry for Chinese Song Dynasty Sky name for NAME Mars
 #. Chinese Song Dynasty Sky name for NAME Mars, native: 荧惑
@@ -48514,8 +48501,8 @@ msgstr "Tàiyīn"
 
 #. Pronounce entry for Chinese Song Dynasty Sky name for NAME Saturn
 #. Chinese Song Dynasty Sky name for NAME Saturn, native: 填星
-msgid "Zhènxing"
-msgstr "Zhènxing"
+msgid "Zhènxīng"
+msgstr "Zhènxīng"
 
 #. Pronounce entry for Chinese Song Dynasty Sky name for NAME Venus
 #. Chinese Song Dynasty Sky name for NAME Venus, native: 太白
@@ -60094,6 +60081,8 @@ msgid "Scorpion"
 msgstr "Escorpión"
 
 #. Modern constellation, native: Serpens
+#. Modern (IAU) constellation, native: Serpens
+msgctxt "IAU constellation name"
 msgid "Serpent"
 msgstr "Serpiente"
 
@@ -60216,6 +60205,8 @@ msgid "Maiden"
 msgstr "Doncella"
 
 #. Modern constellation, native: Vela
+#. Modern (IAU) constellation, native: Vela
+msgctxt "IAU constellation name"
 msgid "Sails"
 msgstr "Velas"
 
@@ -64643,16 +64634,6 @@ msgstr "Serpiente Marina Hembra"
 msgctxt "IAU constellation name"
 msgid "Male Water Snake"
 msgstr "Serpiente Marina Macho"
-
-#. Modern (IAU) constellation, native: Serpens
-msgctxt "IAU constellation name"
-msgid "Serpent"
-msgstr "Serpiente"
-
-#. Modern (IAU) constellation, native: Vela
-msgctxt "IAU constellation name"
-msgid "Sails"
-msgstr "Velas"
 
 #. Modern (IAU) name for B142, native: The Triple Cave Nebula
 #. Modern (IAU) name for B143, native: The Triple Cave Nebula

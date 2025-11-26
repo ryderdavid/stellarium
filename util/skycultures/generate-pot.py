@@ -109,6 +109,46 @@ def handle_constellations_section(sky_culture, sc_name, body, pot):
 
     return constellations_added > 0
 
+def checkReferences(sky_culture, sec_body):
+    ref_re = re.compile(r'^\s*- \[#([0-9]+)\]: \s*\S+')
+    refNum = 1
+    for line in sec_body.splitlines():
+        if line.strip() == '':
+            continue
+        match = ref_re.search(line)
+        if not match:
+            print(f"{sky_culture}: warning: invalid reference line:\n{line}", file=sys.stderr)
+            continue
+        newRefNum = match.group(1)
+        if int(newRefNum) != refNum:
+            print(f"{sky_culture}: warning: reference number isn't equal to previous+1:\n{line}", file=sys.stderr)
+        refNum += 1
+
+def checkDescriptionSectionHeaders(sky_culture, text):
+    # Reference: https://www.markdownguide.org/basic-syntax/#heading-best-practices
+
+    extraSpaceBeforeHashRE = re.compile(r'(?:^|\n)[ 	]+#{1,6}[^\n]*')
+    noSpaceAfterHashRE = re.compile(r'(?:^|\n)[ 	]*#{1,6}[^# ][^\n]*')
+    for match in extraSpaceBeforeHashRE.finditer(text):
+        print((f'{sky_culture}: warning: extra space before hash in section header (see '
+               f'https://www.markdownguide.org/basic-syntax/#heading-best-practices):\n'
+               f'{match.group(0)}'), file=sys.stderr)
+    for match in noSpaceAfterHashRE.finditer(text):
+        print((f'{sky_culture}: warning: no space after hash in section header (see '
+               f'https://www.markdownguide.org/basic-syntax/#heading-best-practices):\n'
+               f'{match.group(0)}'), file=sys.stderr)
+
+    noBlankLineBeforeHeader = re.compile(r'[^\n]\n(##[^\n]*)')
+    noBlankLineAfterHeader = re.compile(r'(?:^|\n)(##[^\n]*)\n[^\n]')
+    for match in noBlankLineBeforeHeader.finditer(text):
+        print((f'{sky_culture}: warning: no empty line before section header (see '
+               f'https://www.markdownguide.org/basic-syntax/#heading-best-practices):\n'
+               f'{match.group(1)}'), file=sys.stderr)
+    for match in noBlankLineAfterHeader.finditer(text):
+        print((f'{sky_culture}: warning: no empty line after section header (see '
+               f'https://www.markdownguide.org/basic-syntax/#heading-best-practices):\n'
+               f'{match.group(1)}'), file=sys.stderr)
+
 def update_descriptions_pot(sclist, pot):
     for sky_culture in sclist:
         data_path = os.path.join(SCDIR, sky_culture)
@@ -120,6 +160,8 @@ def update_descriptions_pot(sclist, pot):
             file.close()
             # First strip all the comments
             markdown = re.sub(r'<!--.*?-->', "", markdown)
+
+            checkDescriptionSectionHeaders(sky_culture, markdown)
 
             titleRE = r'(?:^|\n)\s*# ([^\n]+)(?:\n|$)'
             titleL1 = re.findall(titleRE, markdown)
@@ -161,6 +203,9 @@ def update_descriptions_pot(sclist, pot):
                 if len(sec_body) == 0:
                     print(f'{sky_culture}: warning: empty section "{sec_title}"', file=sys.stderr)
                     continue
+
+                if sec_title == 'References':
+                    checkReferences(sky_culture, sec_body)
 
                 if sec_title == 'Constellations':
                     if handle_constellations_section(sky_culture, sc_name, sec_body, pot):
